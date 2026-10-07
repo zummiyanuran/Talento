@@ -85,7 +85,7 @@
         <button id="tabLemburBtn" onclick="switchTab('lembur')">Lembur</button>
         <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
-        <!-- TAB KHUSUS PERSETUJUAN (KOORDINATOR / ASISTEN KOORDINATOR / SUPER ADMIN) -->
+        <!-- TAB KHUSUS PERSETUJUAN -->
         <button id="tabApproveBtn" class="hidden" onclick="switchTab('approve')" style="background:#f59e0b; color:white;">Persetujuan</button>
 
         <!-- TAB KHUSUS SUPER ADMIN -->
@@ -121,7 +121,7 @@
         <div id="shiftList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 3: FORM PENGAJUAN PRESENSI (KLAIM ABSEN) -->
+      <!-- TAB 3: FORM PENGAJUAN PRESENSI -->
       <div id="tabAjukanAbsen" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Presensi Susulan</h4>
         
@@ -242,7 +242,7 @@
 
       <!-- TAB KHUSUS SUPER ADMIN -->
       <div id="tabAdmin" class="hidden">
-        <h4 style="margin-bottom:8px;">Rekap Presensi Keseluruhan (Super Admin)</h4>
+        <h4 style="margin-bottom:8px;">Rekap Presensi & Lembur (Super Admin)</h4>
         
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
           <label style="font-size:11px; font-weight:bold;">Filter Pegawai:</label>
@@ -253,9 +253,11 @@
           <label style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Filter Bulan & Tahun:</label>
           <input type="month" id="adminFilterBulan" onchange="muatRekapPresensiSuperAdmin()">
 
-          <div style="display:flex; gap:6px; margin-top:8px;">
-            <button class="btn-excel" onclick="exportToExcel()">📊 Export Excel</button>
-            <button class="btn-pdf" onclick="exportToPDF()">📄 Export PDF</button>
+          <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+            <button class="btn-excel" onclick="exportToExcel()">📊 Export Excel Presensi</button>
+            <button class="btn-pdf" onclick="exportToPDF()">📄 Export PDF Presensi</button>
+            <button class="btn-excel" style="background:#0284c7;" onclick="exportLemburToExcel()">🌙 Export Excel Lembur</button>
+            <button class="btn-pdf" style="background:#b91c1c;" onclick="exportLemburToPDF()">📄 Export PDF Lembur</button>
           </div>
         </div>
 
@@ -339,7 +341,7 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://qoosrykfspqlrjafoirs.supabase.co";
+    const SUPABASE_URL = "https://qoosrykfspqlrjafoisr.supabase.co";
     const SUPABASE_KEY = "sb_publishable_O2PgCCr6TKyzlfdNSeNzPw_k77fo_AU";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1253,7 +1255,7 @@
       const [h1, m1] = jamAwal.split(':').map(Number);
       const [h2, m2] = jamAkhir.split(':').map(Number);
       let selisihMenit = (h2 * 60 + m2) - (h1 * 60 + m1);
-      if (selisihMenit < 0) selisihMenit += 24 * 60; // penanganan lewat tengah malam
+      if (selisihMenit < 0) selisihMenit += 24 * 60;
       return selisihMenit / 60;
     }
 
@@ -1261,23 +1263,19 @@
       const statusDiv = document.getElementById('status');
       statusDiv.innerText = `Memproses status...`;
 
-      // Ambil detail pengajuan
       const { data: reqData } = await supabaseClient.from('requests').select('*').eq('id', id).single();
 
       if (reqData) {
-        // PERINTAH PENAMBAHAN / PENGURANGAN SALDO CUTI KOMPENSASI SAAT DI-APPROVE
         if (statusBaru === 'Disetujui') {
           const targetUserId = reqData.user_id;
           const { data: targetProfile } = await supabaseClient.from('profiles').select('*').eq('id', targetUserId).single();
           let currentSaldo = targetProfile?.saldo_cuti_kompensasi || 0;
 
-          // 1. Jika Lembur Memilih "Saldo Cuti Kompensasi"
           if (reqData.type === 'lembur' && reqData.shift_choice && reqData.shift_choice.includes('Saldo Cuti Kompensasi')) {
             const tglLembur = reqData.date;
             const dObj = new Date(tglLembur + 'T00:00:00');
             const dayOfWeek = dObj.getDay();
 
-            // Cek Libur Nasional
             let isLiburNasional = false;
             try {
               const res = await fetch(`https://dayoffapi.vercel.app/api?month=${dObj.getMonth() + 1}&year=${dObj.getFullYear()}`);
@@ -1289,14 +1287,12 @@
 
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
             
-            // Hitung jam durasi
             let durasiJam = 0;
             const matchTime = reqData.shift_choice.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
             if (matchTime) {
               durasiJam = await hitungDurasiJam(matchTime[1], matchTime[2]);
             }
 
-            // Syarat: Minimal 8 Jam di Hari Libur (Weekend/Libur Nasional)
             if ((isWeekend || isLiburNasional) && durasiJam >= 8) {
               const newSaldo = currentSaldo + 1;
               await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldo }).eq('id', targetUserId);
@@ -1304,7 +1300,6 @@
             }
           }
 
-          // 2. Jika Pengajuan Cuti Kompensasi (CT)
           if ((reqData.type === 'cuti' || reqData.type === 'izin') && reqData.shift_choice === 'CT') {
             const newSaldo = Math.max(0, currentSaldo - 1);
             await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldo }).eq('id', targetUserId);
@@ -1545,6 +1540,7 @@
 
           dataExportSuperAdmin.push({
             tanggal: opsiTgl,
+            rawDate: tglStr,
             nama: nama,
             role: role,
             unit: unit,
@@ -1552,6 +1548,8 @@
             jamMasuk: jamMasuk,
             jamPulang: jamPulang,
             lembur: infoLemburText,
+            lemburDetail: lemburApproved ? (lemburApproved.description || '-') : '-',
+            lemburStatus: lemburApproved ? (lemburApproved.status || 'Pending') : '-',
             taggingLokasi: taggingLokasi,
             status: statusAbsen
           });
@@ -1614,6 +1612,50 @@
       });
 
       doc.save(`Rekap_Presensi_Komnas_Perempuan_${Date.now()}.pdf`);
+    }
+
+    // --- FITUR EXPORT DATA LEMBUR SUPER ADMIN ---
+    function exportLemburToExcel() {
+      const dataLembur = dataExportSuperAdmin.filter(item => item.lembur && item.lembur !== '-');
+      if (dataLembur.length === 0) return alert("Tidak ada data pengajuan lembur pada periode/filter ini!");
+
+      const dataFormatted = dataLembur.map(item => ({
+        "Tanggal": item.tanggal,
+        "Nama Pegawai": item.nama,
+        "Jabatan / Tingkatan": item.role,
+        "Unit Kerja": item.unit,
+        "Detail Waktu & Kompensasi": item.lembur,
+        "Uraian Tugas / Alasan Lembur": item.lemburDetail,
+        "Status Persetujuan": item.lemburStatus
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataFormatted);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rekap Lembur");
+      XLSX.writeFile(wb, `Rekap_Lembur_Komnas_Perempuan_${Date.now()}.xlsx`);
+    }
+
+    function exportLemburToPDF() {
+      const dataLembur = dataExportSuperAdmin.filter(item => item.lembur && item.lembur !== '-');
+      if (dataLembur.length === 0) return alert("Tidak ada data pengajuan lembur pada periode/filter ini!");
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('landscape');
+
+      doc.text("Rekap Data Lembur Pegawai - Komnas Perempuan", 14, 15);
+
+      const tableData = dataLembur.map(row => [
+        row.tanggal, row.nama, row.role, row.unit, row.lembur, row.lemburDetail, row.lemburStatus
+      ]);
+
+      doc.autoTable({
+        head: [['Tanggal', 'Nama Pegawai', 'Jabatan', 'Unit Kerja', 'Waktu & Kompensasi', 'Uraian Tugas', 'Status']],
+        body: tableData,
+        startY: 22,
+        styles: { fontSize: 7 }
+      });
+
+      doc.save(`Rekap_Lembur_Komnas_Perempuan_${Date.now()}.pdf`);
     }
 
     async function superAdminRegisterUser() {
@@ -1727,6 +1769,7 @@
 
     async function muatRekan() {
       const { data } = await supabaseClient.from('profiles').select('*');
+      listSupervisors = data || [];
       const list = document.getElementById('rekanList');
       
       if (data && data.length > 0) {
