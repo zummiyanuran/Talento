@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRIS Pemagang Komnas Perempuan</title>
+  <!-- Supabase JS -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- SheetJS untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF & AutoTable untuk Export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 500px; text-align: center; }
+    h2, h3, h4 { margin-top: 0; color: #2c3e50; }
+    input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+    button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; }
+    .btn-pulang { background: #ef4444; }
+    .btn-pulang:hover { background: #dc2626; }
+    .btn-secondary { background: #10b981; }
+    .btn-warning { background: #f59e0b; }
+    .btn-purple { background: #8b5cf6; }
+    .btn-excel { background: #16a34a; font-size: 11px; padding: 6px 10px; width: auto; }
+    .btn-pdf { background: #dc2626; font-size: 11px; padding: 6px 10px; width: auto; }
+    .btn-approve { background: #16a34a; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
+    .btn-reject { background: #dc2626; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
+    .btn-delete { background: #991b1b; padding: 4px 8px; font-size: 10px; margin-top: 4px; width: auto; }
+    .hidden { display: none; }
+    #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
+    .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
+    .nav-tabs { display: flex; gap: 4px; margin-bottom: 15px; flex-wrap: wrap; }
+    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 45px; }
+    .nav-tabs button.active { background: #2563eb; color: white; }
+    .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
+    .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: inline-block; }
+    .today-shift-badge { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 14px; display: block; }
+    .shift-card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
+    .shift-off { background: #fef2f2; border: 1px solid #fecaca; }
+    .absen-info { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-weight: bold; color: #1e293b; }
+    .status-badge-info { margin-top: 3px; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .badge-pending { background: #fef3c7; color: #d97706; }
+    .badge-approved { background: #dcfce7; color: #15803d; }
+    .badge-rejected { background: #fee2e2; color: #b91c1c; }
+    .role-badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-bottom: 4px; }
+    .unit-badge { display: inline-block; background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-bottom: 8px; }
+    .filter-month-box { background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .filter-month-box label { font-size: 11px; font-weight: bold; color: #334155; }
+    .filter-month-box input, .filter-month-box select { width: auto; margin: 0; padding: 4px 8px; font-size: 12px; }
+    .time-container { display: flex; gap: 8px; text-align: left; }
+    .time-container div { flex: 1; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>KARTINI</h2>
+
+    <!-- FORM AUTENTIKASI -->
+    <div id="authSection">
+      <input type="email" id="email" placeholder="Email Pengguna">
+      <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
+      <button type="button" onclick="login()">Masuk</button>
+    </div>
+
+    <!-- DASHBOARD UTAMA -->
+    <div id="mainDashboard" class="hidden">
+      <img id="userAvatar" class="profile-img" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="Profile">
+      <h4 id="userName" style="margin-bottom:2px;">Pengguna</h4>
+      <div id="userRoleBadge" class="role-badge">Role: Magang</div>
+      <div id="userUnitBadge" class="unit-badge">Unit: Umum</div>
+
+      <!-- TAB NAVIGASI -->
+      <div class="nav-tabs">
+        <button id="tabAbsenBtn" class="active" onclick="switchTab('Presensi')">Presensi</button>
+        <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
+        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanPresensi')">Klaim Presensi</button>
+        <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
+        <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
+
+        <!-- TAB KHUSUS SUPERVISOR -->
+        <button id="tabApproveBtn" class="hidden" onclick="switchTab('approve')" style="background:#f59e0b; color:white;">Persetujuan</button>
+
+        <!-- TAB KHUSUS SUPER ADMIN -->
+        <button id="tabAdminBtn" class="hidden" onclick="switchTab('admin')" style="background:#8b5cf6; color:white;">Super Admin</button>
+
+        <button id="tabRekanBtn" onclick="switchTab('rekan')">Rekan</button>
+        <button id="tabProfilBtn" onclick="switchTab('profil')">Profil</button>
+      </div>
+
+      <!-- TAB 1: PRESENSI -->
+      <div id="tabAbsen">
+        <div class="date-badge" id="currentDateDisplay">Memuat Tanggal...</div>
+        
+        <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
+
+        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Clockin</button>
+        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Clockout</button>
+        
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Harian Saya</h4>
+        <div id="riwayatList" style="max-height:160px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 2: JADWAL SHIFT BULANAN -->
+      <div id="tabShift" class="hidden">
+        <h4 style="margin-bottom:6px;">Jadwal Shift & Presensi Bulanan</h4>
+        
+        <div class="filter-month-box">
+          <label for="monthPicker">Pilih Bulan & Tahun:</label>
+          <input type="month" id="monthPicker" onchange="muatJadwalShift()">
+        </div>
+
+        <div id="shiftList" style="max-height:220px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 3: FORM PENGAJUAN PRESENSI (KLAIM ABSEN) -->
+      <div id="tabAjukanAbsen" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Presensi Susulan</h4>
+        
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Presensi:</label>
+        <input type="date" id="claimReqDate">
+
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Tipe Absen:</label>
+        <select id="claimType" onchange="toggleTimeInputs()">
+          <option value="Masuk">Clockin</option>
+          <option value="Pulang">Clockout</option>
+          <option value="MasukDanPulang">Clockin dan Clockout</option>
+        </select>
+
+        <div class="time-container">
+          <div id="boxJamMasuk">
+            <label style="font-size:11px; display:block; margin-top:4px;">Jam Masuk:</label>
+            <input type="time" id="claimTimeMasuk" value="09:00">
+          </div>
+          <div id="boxJamPulang" class="hidden">
+            <label style="font-size:11px; display:block; margin-top:4px;">Jam Pulang:</label>
+            <input type="time" id="claimTimePulang" value="17:00">
+          </div>
+        </div>
+
+        <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi..." rows="3"></textarea>
+        <button class="btn-secondary" onclick="kirimPengajuan('claim_absen')">Kirim Pengajuan Presensi</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Pengajuan Presensi Saya</h4>
+        <div id="riwayatClaimList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 4: FORM & STATUS IZIN -->
+      <div id="tabIzin" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Izin:</label>
+        <input type="date" id="reqDate">
+        <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="3"></textarea>
+        <button class="btn-warning" onclick="kirimPengajuan('izin')">Kirim Pengajuan Izin</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Status Izin Saya</h4>
+        <div id="riwayatIzinList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 5: FORM PERUBAHAN SHIFT -->
+      <div id="tabTukarShift" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Perubahan Shift</h4>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Perubahan Shift:</label>
+        <input type="date" id="shiftReqDate">
+
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Shift Baru:</label>
+        <select id="shiftChoice">
+          <option value="Shift FT (09.00 - 17.00)">Shift FT (09.00 - 17.00)</option>
+          <option value="Shift EM (08.00 - 16.00)">Shift EM (08.00 - 16.00)</option>
+          <option value="WFH FT (09.00 - 17.00)">WFH FT (09.00 - 17.00)</option>
+          <option value="WFH EM (08.00 - 16.00)">WFH EM (08.00 - 16.00)</option>
+        </select>
+
+        <textarea id="shiftReqDesc" placeholder="Tuliskan alasan perubahan shift..." rows="3"></textarea>
+        <button class="btn-purple" onclick="kirimPengajuan('shift')">Kirim Pengajuan Shift</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Perubahan Shift Saya</h4>
+        <div id="riwayatShiftList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB KHUSUS SUPERVISOR: PERSETUJUAN -->
+      <div id="tabApprove" class="hidden">
+        <h4 style="margin-bottom:8px;">Daftar Pengajuan Pemagang</h4>
+        <div id="approvalList" style="max-height:250px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB KHUSUS SUPER ADMIN -->
+      <div id="tabAdmin" class="hidden">
+        <h4 style="margin-bottom:8px;">Rekap Presensi Keseluruhan (Super Admin)</h4>
+        
+        <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
+          <label style="font-size:11px; font-weight:bold;">Filter Pemagang:</label>
+          <select id="adminFilterMagang" onchange="muatRekapPresensiSuperAdmin()">
+            <option value="ALL">-- Semua Pemagang --</option>
+          </select>
+
+          <label style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Filter Bulan & Tahun:</label>
+          <input type="month" id="adminFilterBulan" onchange="muatRekapPresensiSuperAdmin()">
+
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btn-excel" onclick="exportToExcel()">📊 Export Excel</button>
+            <button class="btn-pdf" onclick="exportToPDF()">📄 Export PDF</button>
+          </div>
+        </div>
+
+        <h4 style="margin-bottom:6px;">Data Rekap Presensi</h4>
+        <div id="adminRekapList" style="max-height:180px; overflow-y:auto;"></div>
+
+        <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
+
+        <h4 style="margin-bottom:8px;">Manajemen Akun Baru</h4>
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
+          <input type="text" id="adminNewName" placeholder="Nama Lengkap">
+          <input type="email" id="adminNewEmail" placeholder="Email Pengguna">
+          <input type="tel" id="adminNewPhone" placeholder="Nomor Telepon / WA">
+          <input type="password" id="adminNewPassword" placeholder="Password (Min. 6 Karakter)">
+          
+          <label style="font-size:11px;">Role Akun:</label>
+          <select id="adminNewRole">
+            <option value="magang">Pemagang</option>
+            <option value="supervisor">Supervisor Pemagang</option>
+            <option value="superadmin">Super Admin</option>
+          </select>
+
+          <label style="font-size:11px;">Unit Kerja:</label>
+          <input type="text" id="adminNewUnit" placeholder="Contoh: Divisi IT, Humas, Legal">
+
+          <label style="font-size:11px;">Pilih Supervisor Atasan:</label>
+          <select id="adminNewSupervisor">
+            <option value="">-- Tanpa Atasan Direct --</option>
+          </select>
+
+          <button class="btn-purple" onclick="superAdminRegisterUser()">Buat Akun Baru</button>
+        </div>
+
+<!-- TAB SUPER ADMIN: KELOLA AKUN -->
+        <h4 style="margin-bottom:6px;">Kelola Akun, Atasan, Offboard & Password</h4>
+        
+        <!-- INPUT FILTER / PENCARIAN USER -->
+        <input type="text" id="adminSearchUser" placeholder="🔍 Cari nama pengguna..." onkeyup="filterUserAdminList()" style="margin-bottom:8px;">
+        
+        <div id="adminUserList" style="max-height:250px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 6: DIREKTORI REKAN -->
+      <div id="tabRekan" class="hidden">
+        <h4>Daftar Rekan Pemagang</h4>
+        <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 7: PROFIL & FOTO -->
+      <div id="tabProfil" class="hidden">
+        <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
+        <input type="tel" id="editPhoneNumber" placeholder="Nomor Telepon / WA">
+        
+        <div style="text-align:left; font-size:11px; margin:6px 0; background:#f8fafc; padding:8px; border-radius:6px;">
+          <div><b>Email:</b> <span id="profileEmailText">-</span></div>
+          <div><b>Role Akun:</b> <span id="profileRoleText">-</span></div>
+          <div><b>Unit Kerja:</b> <span id="profileUnitText">-</span></div>
+          <div><b>Supervisor:</b> <span id="profileSupervisorText">-</span></div>
+        </div>
+
+        <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Pilih Foto Profil:</label>
+        <input type="file" id="avatarFile" accept="image/*">
+        <button onclick="simpanProfil()">Simpan Profil</button>
+
+        <hr style="margin: 12px 0; border:0; border-top:1px solid #e2e8f0;">
+
+        <!-- FORM UBAH PASSWORD MANDIRI -->
+        <h4 style="margin-bottom:6px;">Ubah Password Saya</h4>
+        <input type="password" id="myNewPassword" placeholder="Password Baru (Min 6 Karakter)">
+        <button class="btn-warning" onclick="ubahPasswordMandiri()">Perbarui Password</button>
+
+        <button class="btn-pulang" style="margin-top:15px;" onclick="logout()">Keluar / Logout</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://dreztgddckcxpjsrjdpg.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // KOORDINAT KANTOR MENTENG JAKARTA PUSAT (QRWP+C6 Menteng)
+    const OFFICE_LAT = -6.1964;
+    const OFFICE_LNG = 106.8355;
+    const MAX_RADIUS_KM = 1.5; // RADIUS 1500 METER
+
+    let currentUser = null;
+    let userProfile = null;
+    let userAttendances = [];
+    let userRequests = [];
+    let listSupervisors = [];
+    let dataExportSuperAdmin = [];
+
+    function hitungJarak(lat1, lon1, lat2, lon2) {
+      const R = 6371; 
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c; 
+    }
+
+    function formatTanggalLokal(dateObj) {
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function inisialisasiDefaultBulan() {
+      const skrg = new Date();
+      const yyyy = skrg.getFullYear();
+      const mm = String(skrg.getMonth() + 1).padStart(2, '0');
+      document.getElementById('monthPicker').value = `${yyyy}-${mm}`;
+      document.getElementById('adminFilterBulan').value = `${yyyy}-${mm}`;
+    }
+
+    function toggleTimeInputs() {
+      const val = document.getElementById('claimType').value;
+      const boxMasuk = document.getElementById('boxJamMasuk');
+      const boxPulang = document.getElementById('boxJamPulang');
+
+      if (val === 'Masuk') {
+        boxMasuk.classList.remove('hidden');
+        boxPulang.classList.add('hidden');
+      } else if (val === 'Pulang') {
+        boxMasuk.classList.add('hidden');
+        boxPulang.classList.remove('hidden');
+      } else { 
+        boxMasuk.classList.remove('hidden');
+        boxPulang.classList.remove('hidden');
+      }
+    }
+
+    function tampilkanTanggalHariIni() {
+      const opsi = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const hariIni = new Date().toLocaleDateString('id-ID', opsi);
+      document.getElementById('currentDateDisplay').innerText = hariIni;
+      document.getElementById('reqDate').value = formatTanggalLokal(new Date());
+      document.getElementById('shiftReqDate').value = formatTanggalLokal(new Date());
+      document.getElementById('claimReqDate').value = formatTanggalLokal(new Date());
+      inisialisasiDefaultBulan();
+    }
+
+    async function checkAuth() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (user) {
+        currentUser = user;
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mainDashboard').classList.remove('hidden');
+        tampilkanTanggalHariIni();
+        await muatProfil();
+        await muatUserRequests();
+        await muatRiwayat();
+        await muatShiftHariIni();
+        await muatJadwalShift();
+        await muatRiwayatIzin();
+        await muatRiwayatShift();
+        await muatRiwayatClaim();
+      }
+    }
+    checkAuth();
+
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const status = document.getElementById('status');
+      status.innerText = "Memverifikasi...";
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else location.reload();
+    }
+
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      location.reload();
+    }
+
+    function switchTab(tabName) {
+      ['absen', 'shift', 'ajukanAbsen', 'izin', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
+        const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
+        if (el) el.classList.add('hidden');
+        if (btn) btn.classList.remove('active');
+      });
+
+      const activeEl = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+      const activeBtn = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn');
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (tabName === 'absen') { 
+        muatUserRequests().then(() => {
+          muatRiwayat();
+          muatShiftHariIni();
+        }); 
+      }
+      if (tabName === 'rekan') muatRekan();
+      if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
+      if (tabName === 'ajukanAbsen') muatRiwayatClaim();
+      if (tabName === 'izin') muatRiwayatIzin();
+      if (tabName === 'tukarShift') muatRiwayatShift();
+      if (tabName === 'approve') muatDaftarPersetujuan();
+      if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
+    }
+
+    function catatPresensi(tipeAbsen) {
+      const statusDiv = document.getElementById('status');
+      if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
+
+      statusDiv.innerText = `Mengambil lokasi Absen ${tipeAbsen}...`;
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
+        const tglHariIni = formatTanggalLokal(new Date());
+
+        const jarakKm = hitungJarak(lat, lng, OFFICE_LAT, OFFICE_LNG);
+        const jarakMeter = Math.round(jarakKm * 1000);
+
+        let alamatTeks = `Lokasi GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const geoData = await res.json();
+          if(geoData.display_name) alamatTeks = geoData.display_name;
+        } catch (e) { console.log("Geocoding Error:", e); }
+
+        // JIKA DI LUAR RADIUS 100 METER -> CATAT LOKASI & OTOMATIS BUAT KLAIM
+        if (jarakKm > MAX_RADIUS_KM) {
+          statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakMeter}m) di luar radius kantor (100m).</b><br>Mencatat lokasi & mengajukan klaim presensi...</span>`;
+          
+          const shiftChoiceText = `${tipeAbsen} (${jamSekarang})`;
+          const descClaim = `[Luar Radius ${jarakMeter}m] Absen ${tipeAbsen} pada ${jamSekarang} WIB. Lokasi: ${alamatTeks}`;
+
+          const { error: claimErr } = await supabaseClient.from('requests').insert([{
+            user_id: currentUser.id,
+            type: 'claim_absen',
+            shift_choice: shiftChoiceText,
+            description: descClaim,
+            date: tglHariIni,
+            status: 'Pending'
+          }]);
+
+          if (claimErr) statusDiv.innerHTML = `<span style='color:red'>Gagal Klaim: ${claimErr.message}</span>`;
+          else {
+            statusDiv.innerHTML = `<span style='color:green'><b>Lokasi Dicatat! Pengajuan Klaim Presensi telah dikirim ke Atasan.</b><br>📍 ${alamatTeks}</span>`;
+            await muatUserRequests();
+            await muatRiwayatClaim();
+            await muatRiwayat();
+          }
+          return;
+        }
+
+        // JIKA DALAM RADIUS <= 100 METER -> LANGSUNG SIMPAN MASUK/PULANG
+        const { error } = await supabaseClient
+          .from('attendances')
+          .insert([{ 
+            user_id: currentUser.id, 
+            jam_masuk: jamSekarang, 
+            latitude: lat, 
+            longitude: lng, 
+            alamat: alamatTeks, 
+            tipe: tipeAbsen,
+            status: 'Hadir',
+            created_at: new Date().toISOString()
+          }]);
+
+        if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
+        else {
+          statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil! (${jarakMeter}m dari kantor)</b><br>📍 ${alamatTeks}</span>`;
+          await muatUserRequests();
+          await muatRiwayat();
+          await muatJadwalShift();
+        }
+      }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak! Pastikan GPS aktif.</span>`, { enableHighAccuracy: true });
+    }
+
+    async function muatRiwayat() {
+      const { data } = await supabaseClient
+        .from('attendances')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      userAttendances = data || [];
+
+      const list = document.getElementById('riwayatList');
+      const btnMasuk = document.getElementById('btnMasuk');
+      const btnPulang = document.getElementById('btnPulang');
+
+      btnMasuk.disabled = false;
+      btnMasuk.innerText = "Clockin";
+      btnPulang.disabled = false;
+      btnPulang.innerText = "Clockout";
+
+      const tglHariIni = formatTanggalLokal(new Date());
+
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
+
+      let gabunganRiwayat = [];
+
+      userAttendances.forEach(item => {
+        const d = new Date(item.created_at || Date.now());
+        gabunganRiwayat.push({
+          tanggal: formatTanggalLokal(d),
+          tglDisplay: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          tipe: item.tipe || 'Masuk',
+          jam: item.jam_masuk || '-',
+          lokasi: item.alamat || (item.latitude + ', ' + item.longitude),
+          sumber: 'GPS'
+        });
+      });
+
+      const claimApprovedList = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
+      claimApprovedList.forEach(c => {
+        const tglClaim = bersihkanTanggal(c.date);
+        const d = new Date(tglClaim + 'T00:00:00');
+        const tglDisplay = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        let tipeClaim = 'Masuk';
+        let jamClaim = '-';
+        
+        if (c.shift_choice) {
+          if (c.shift_choice.includes('Masuk')) tipeClaim = 'Masuk';
+          if (c.shift_choice.includes('Pulang')) tipeClaim = 'Pulang';
+          
+          const matchJam = c.shift_choice.match(/\((.*?)\)/);
+          if (matchJam) jamClaim = matchJam[1];
+        }
+
+        gabunganRiwayat.push({
+          tanggal: tglClaim,
+          tglDisplay: tglDisplay,
+          tipe: tipeClaim,
+          jam: jamClaim,
+          lokasi: c.description || 'Klaim Presensi Disetujui',
+          sumber: 'Klaim'
+        });
+      });
+
+      const presensiHariIni = gabunganRiwayat.filter(g => g.tanggal === tglHariIni);
+      
+      presensiHariIni.forEach(p => {
+        if (p.tipe === 'Masuk') {
+          btnMasuk.disabled = true;
+          btnMasuk.innerText = p.sumber === 'Klaim' ? "Sudah Absen Masuk (Disetujui)" : "Sudah Absen Masuk Hari Ini";
+        }
+        if (p.tipe === 'Pulang') {
+          btnPulang.disabled = true;
+          btnPulang.innerText = p.sumber === 'Klaim' ? "Sudah Absen Pulang (Disetujui)" : "Sudah Absen Pulang Hari Ini";
+        }
+      });
+
+      if (gabunganRiwayat.length > 0) {
+        list.innerHTML = gabunganRiwayat.map(item => `
+          <div class="list-item">
+            <b>${item.tglDisplay}</b> - Absen ${item.tipe} (${item.jam}) 
+            ${item.sumber === 'Klaim' ? '<span class="status-badge-info badge-approved">KLAIM DIACC</span>' : ''}<br>
+            <small>📍 ${item.lokasi}</small>
+          </div>
+        `).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada riwayat presensi.</small>";
+      }
+    }
+
+    async function muatUserRequests() {
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id);
+      userRequests = data || [];
+    }
+
+    async function muatShiftHariIni() {
+      const display = document.getElementById('todayShiftDisplay');
+      const skrg = new Date();
+      const tglHariIni = formatTanggalLokal(skrg);
+      const dayOfWeek = skrg.getDay();
+
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
+
+      let liburNasional = [];
+      try {
+        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${skrg.getMonth() + 1}&year=${skrg.getFullYear()}`);
+        const dataLibur = await res.json();
+        if (Array.isArray(dataLibur)) {
+          liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
+        }
+      } catch (e) { console.log("Gagal memuat libur", e); }
+
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      const isHariLibur = liburNasional.includes(tglHariIni);
+
+      if (isWeekend || isHariLibur) {
+        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#dc2626;'>Day Off (00.00 - 00.00)</span>";
+        return;
+      }
+
+      const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
+      if (reqIzinHariIni) {
+        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#d97706;'>IZIN DISETUJUI</span>";
+        return;
+      }
+
+      const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
+      let jamShiftText = "09:00 - 17:00 (FT)";
+
+      if (reqShiftHariIni) {
+        const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
+        if (detailTeks.includes('WFH FT')) jamShiftText = "09:00 - 17:00 (WFH FT)";
+        else if (detailTeks.includes('WFH EM')) jamShiftText = "08:00 - 16:00 (WFH EM)";
+        else if (detailTeks.includes('EM') || detailTeks.includes('08.00')) jamShiftText = "08:00 - 16:00 (EM)";
+      }
+
+      display.innerHTML = `⏰ Shift Hari Ini: <b>${jamShiftText}</b>`;
+    }
+
+    async function muatJadwalShift() {
+      const container = document.getElementById('shiftList');
+      const selectedMonthVal = document.getElementById('monthPicker').value;
+
+      let tahun, bulan;
+      if (selectedMonthVal) {
+        const parts = selectedMonthVal.split('-');
+        tahun = parseInt(parts[0]);
+        bulan = parseInt(parts[1]) - 1; 
+      } else {
+        const skrg = new Date();
+        tahun = skrg.getFullYear();
+        bulan = skrg.getMonth();
+      }
+
+      const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
+
+      let liburNasional = [];
+      try {
+        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${bulan + 1}&year=${tahun}`);
+        const dataLibur = await res.json();
+        if (Array.isArray(dataLibur)) {
+          liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
+        }
+      } catch (e) { console.log("Gagal memuat libur nasional", e); }
+
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
+
+      let html = '';
+      for (let day = 1; day <= jumlahHari; day++) {
+        const d = new Date(tahun, bulan, day);
+        const dayOfWeek = d.getDay(); 
+        const tglStr = formatTanggalLokal(d);
+        const opsiTgl = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const isHariLibur = liburNasional.includes(tglStr);
+
+        const presensiHariIni = userAttendances.filter(a => bersihkanTanggal(a.created_at) === tglStr);
+        let absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
+        let absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
+
+        const reqClaimHariIni = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+        
+        let claimMasukInfo = reqClaimHariIni.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
+        let claimPulangInfo = reqClaimHariIni.find(c => c.shift_choice && c.shift_choice.includes('Pulang'));
+
+        let detailAbsenHtml = '<div class="absen-info">📌 Presensi: -</div>';
+        if (absenMasuk || absenPulang || claimMasukInfo || claimPulangInfo) {
+          let jamMasukVal = '-';
+          if (absenMasuk) jamMasukVal = absenMasuk.jam_masuk;
+          else if (claimMasukInfo) {
+            const match = claimMasukInfo.shift_choice.match(/\((.*?)\)/);
+            jamMasukVal = match ? `${match[1]} (Diacc)` : 'Diacc';
+          }
+
+          let jamPulangVal = '-';
+          if (absenPulang) jamPulangVal = absenPulang.jam_masuk;
+          else if (claimPulangInfo) {
+            const match = claimPulangInfo.shift_choice.match(/\((.*?)\)/);
+            jamPulangVal = match ? `${match[1]} (Diacc)` : 'Diacc';
+          }
+
+          detailAbsenHtml = `<div class="absen-info">📌 Masuk: ${jamMasukVal} | Pulang: ${jamPulangVal}</div>`;
+        }
+
+        const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+        const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+
+        let statusKeterangan = '';
+        let shiftWaktuText = "09:00 - 17:00 (FT)";
+
+        if (reqShiftHariIni) {
+          const stShift = reqShiftHariIni.status || 'Pending';
+          const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
+          
+          if (stShift === 'Disetujui') {
+            if (detailTeks.includes('WFH FT')) shiftWaktuText = "09:00 - 17:00 (WFH FT)";
+            else if (detailTeks.includes('WFH EM')) shiftWaktuText = "08:00 - 16:00 (WFH EM)";
+            else if (detailTeks.includes('EM') || detailTeks.includes('08.00')) shiftWaktuText = "08:00 - 16:00 (EM)";
+            else shiftWaktuText = "09:00 - 17:00 (FT)";
+            
+            statusKeterangan += `<br><span class="status-badge-info badge-approved">🔄 Shift Diubah (${shiftWaktuText})</span>`;
+          } else if (stShift === 'Pending') {
+            statusKeterangan += `<br><span class="status-badge-info badge-pending">🔄 Pengajuan Shift (Pending)</span>`;
+          }
+        }
+
+        if (reqIzinHariIni) {
+          const stIzin = reqIzinHariIni.status || 'Pending';
+          if (stIzin === 'Disetujui') {
+            statusKeterangan += `<br><span class="status-badge-info badge-approved">✉️ IZIN DISETUJUI</span>`;
+          } else if (stIzin === 'Pending') {
+            statusKeterangan += `<br><span class="status-badge-info badge-pending">✉️ Pengajuan Izin (Pending)</span>`;
+          }
+        }
+
+        if (isWeekend || isHariLibur) {
+          html += `
+            <div class="shift-card shift-off">
+              <b>${opsiTgl}</b>: <span style="color:#dc2626; font-weight:bold;">Day Off (00.00 - 00.00)</span>
+              <small style="display:block; color:#991b1b;">${isHariLibur ? 'Hari Libur Nasional' : 'Akhir Pekan'}</small>
+              ${statusKeterangan}
+              ${detailAbsenHtml}
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="shift-card">
+              <b>${opsiTgl}</b>: <span style="color:#16a34a; font-weight:bold;">${shiftWaktuText}</span>
+              <small style="display:block; color:#15803d;">Shift Reguler Magang</small>
+              ${statusKeterangan}
+              ${detailAbsenHtml}
+            </div>
+          `;
+        }
+      }
+      container.innerHTML = html;
+    }
+
+    async function muatProfil() {
+      const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+      if (data) {
+        userProfile = data;
+        const nama = data.nama_lengkap || data.full_name || currentUser.email;
+        const role = data.role || 'magang';
+        const unit = data.unit_kerja || 'Umum';
+        const phone = data.phone_number || '';
+
+        document.getElementById('userName').innerText = nama;
+        document.getElementById('userRoleBadge').innerText = `Role: ${role.toUpperCase()}`;
+        document.getElementById('userUnitBadge').innerText = `Unit: ${unit}`;
+
+        document.getElementById('profileEmailText').innerText = currentUser.email;
+        document.getElementById('profileRoleText').innerText = role.toUpperCase();
+        document.getElementById('profileUnitText').innerText = unit;
+
+        if (data.supervisor_id) {
+          const { data: spvData } = await supabaseClient.from('profiles').select('nama_lengkap, full_name').eq('id', data.supervisor_id).single();
+          document.getElementById('profileSupervisorText').innerText = spvData?.nama_lengkap || spvData?.full_name || 'Ada';
+        } else {
+          document.getElementById('profileSupervisorText').innerText = '-';
+        }
+
+        if (role === 'supervisor' || role === 'superadmin') {
+          document.getElementById('tabApproveBtn').classList.remove('hidden');
+        } else {
+          document.getElementById('tabApproveBtn').classList.add('hidden');
+        }
+
+        if (role === 'superadmin') {
+          document.getElementById('tabAdminBtn').classList.remove('hidden');
+        } else {
+          document.getElementById('tabAdminBtn').classList.add('hidden');
+        }
+        
+        if (data.avatar_url && data.avatar_url.trim() !== "") {
+          document.getElementById('userAvatar').src = data.avatar_url;
+        } else {
+          document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nama)}&background=2563eb&color=fff`;
+        }
+        document.getElementById('editFullName').value = nama;
+        document.getElementById('editPhoneNumber').value = phone;
+      }
+    }
+
+    async function simpanProfil() {
+      const fullName = document.getElementById('editFullName').value;
+      const phoneNumber = document.getElementById('editPhoneNumber').value;
+      const avatarFile = document.getElementById('avatarFile').files[0];
+      const status = document.getElementById('status');
+      status.innerText = "Menyimpan profil...";
+
+      let avatarUrl = userProfile?.avatar_url || '';
+
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${currentUser.id}.${fileExt}`;
+        const { error: uploadErr } = await supabaseClient.storage.from('profiles').upload(filePath, avatarFile, { upsert: true, cacheControl: '0' });
+        if (!uploadErr) {
+          const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
+          avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+        }
+      }
+
+      const { error } = await supabaseClient.from('profiles').upsert({
+        id: currentUser.id,
+        nama_lengkap: fullName,
+        full_name: fullName,
+        phone_number: phoneNumber,
+        avatar_url: avatarUrl
+      });
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Profil & Foto berhasil diperbarui!</span>";
+        await muatProfil();
+      }
+    }
+
+    async function ubahPasswordMandiri() {
+      const pwdBaru = document.getElementById('myNewPassword').value;
+      const status = document.getElementById('status');
+      if (!pwdBaru || pwdBaru.length < 6) return status.innerHTML = "<span style='color:red'>Password minimal 6 karakter!</span>";
+
+      status.innerText = "Memperbarui password...";
+      const { error } = await supabaseClient.auth.updateUser({ password: pwdBaru });
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Password Anda berhasil diperbarui!</span>";
+        document.getElementById('myNewPassword').value = '';
+      }
+    }
+
+    async function kirimPengajuan(jenisType) {
+      const status = document.getElementById('status');
+      let selectedDate = '';
+      let desc = '';
+      let shiftChoice = null;
+
+      if (jenisType === 'izin') {
+        selectedDate = document.getElementById('reqDate').value;
+        desc = document.getElementById('reqDesc').value.trim();
+      } else if (jenisType === 'shift') {
+        selectedDate = document.getElementById('shiftReqDate').value;
+        desc = document.getElementById('shiftReqDesc').value.trim();
+        shiftChoice = document.getElementById('shiftChoice').value;
+      } else if (jenisType === 'claim_absen') {
+        selectedDate = document.getElementById('claimReqDate').value;
+        desc = document.getElementById('claimReqDesc').value.trim();
+        const cType = document.getElementById('claimType').value;
+
+        if (cType === 'MasukDanPulang') {
+          const timeMasuk = document.getElementById('claimTimeMasuk').value || '09:00';
+          const timePulang = document.getElementById('claimTimePulang').value || '17:00';
+          if (!selectedDate || !desc) return status.innerHTML = "<span style='color:red'>Tanggal & alasan wajib diisi!</span>";
+
+          status.innerText = "Mengirim pengajuan Masuk & Pulang...";
+          const payloadArray = [
+            {
+              user_id: currentUser.id,
+              type: 'claim_absen',
+              shift_choice: `Masuk (${timeMasuk})`,
+              description: `[Tanggal: ${selectedDate}] Klaim Absen Masuk (${timeMasuk}) - ${desc}`,
+              date: selectedDate,
+              status: 'Pending'
+            },
+            {
+              user_id: currentUser.id,
+              type: 'claim_absen',
+              shift_choice: `Pulang (${timePulang})`,
+              description: `[Tanggal: ${selectedDate}] Klaim Absen Pulang (${timePulang}) - ${desc}`,
+              date: selectedDate,
+              status: 'Pending'
+            }
+          ];
+
+          const { error } = await supabaseClient.from('requests').insert(payloadArray);
+          if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+          else {
+            status.innerHTML = "<span style='color:green'>Pengajuan Masuk & Pulang sekaligus berhasil dikirim!</span>";
+            document.getElementById('claimReqDesc').value = "";
+            await muatUserRequests();
+            await muatRiwayatClaim();
+            await muatRiwayat();
+            await muatShiftHariIni();
+            await muatJadwalShift();
+          }
+          return;
+        } else {
+          const targetTime = cType === 'Masuk' ? document.getElementById('claimTimeMasuk').value : document.getElementById('claimTimePulang').value;
+          shiftChoice = `${cType} (${targetTime || '09:00'})`;
+        }
+      }
+
+      if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal wajib dipilih!</span>";
+      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan wajib diisi!</span>";
+
+      status.innerText = "Mengirim pengajuan...";
+      let fullDescription = `[Tanggal: ${selectedDate}] ${desc}`;
+      if (jenisType === 'shift') fullDescription = `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}`;
+      if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Absen ${shiftChoice} - ${desc}`;
+
+      const { error } = await supabaseClient.from('requests').insert([{ 
+        user_id: currentUser.id, 
+        type: jenisType, 
+        shift_choice: shiftChoice,
+        description: fullDescription,
+        date: selectedDate,
+        status: 'Pending'
+      }]);
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Pengajuan berhasil dikirim!</span>";
+        if (jenisType === 'izin') {
+          document.getElementById('reqDesc').value = "";
+          await muatRiwayatIzin();
+        } else if (jenisType === 'shift') {
+          document.getElementById('shiftReqDesc').value = "";
+          await muatRiwayatShift();
+        } else if (jenisType === 'claim_absen') {
+          document.getElementById('claimReqDesc').value = "";
+          await muatRiwayatClaim();
+        }
+        await muatUserRequests();
+        await muatRiwayat();
+        await muatShiftHariIni();
+        await muatJadwalShift();
+      }
+    }
+
+    async function muatRiwayatIzin() {
+      const list = document.getElementById('riwayatIzinList');
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'izin')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => {
+          let badgeClass = 'badge-pending';
+          const st = item.status || 'Pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Keterangan:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin.</small>";
+      }
+    }
+
+    async function muatRiwayatShift() {
+      const list = document.getElementById('riwayatShiftList');
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'shift')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => {
+          let badgeClass = 'badge-pending';
+          const st = item.status || 'Pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Keterangan:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan perubahan shift.</small>";
+      }
+    }
+
+    async function muatRiwayatClaim() {
+      const list = document.getElementById('riwayatClaimList');
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'claim_absen')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => {
+          let badgeClass = 'badge-pending';
+          const st = item.status || 'Pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Keterangan:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan presensi susulan.</small>";
+      }
+    }
+
+    async function muatDaftarPersetujuan() {
+      const list = document.getElementById('approvalList');
+      list.innerHTML = "<small>Memuat data...</small>";
+
+      const { data: reqs, error: reqErr } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (reqErr) {
+        list.innerHTML = `<small style='color:red;'>Gagal memuat: ${reqErr.message}</small>`;
+        return;
+      }
+
+      if (reqs && reqs.length > 0) {
+        const { data: profilesData } = await supabaseClient.from('profiles').select('*');
+        const profilesMap = {};
+        if (profilesData) {
+          profilesData.forEach(p => { profilesMap[p.id] = p; });
+        }
+
+        const filteredReqs = reqs.filter(r => {
+          const pemohonProfile = profilesMap[r.user_id];
+          if (userProfile?.role === 'superadmin') return true;
+          
+          const isDirectBawahan = pemohonProfile?.supervisor_id === currentUser.id;
+          const isSameUnit = pemohonProfile?.unit_kerja && userProfile?.unit_kerja && (pemohonProfile.unit_kerja === userProfile.unit_kerja);
+          
+          return isDirectBawahan || isSameUnit;
+        });
+
+        if (filteredReqs.length === 0) {
+          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari pemagang bimbingan Anda.</small>";
+          return;
+        }
+
+        list.innerHTML = filteredReqs.map(item => {
+          const pemohonProfile = profilesMap[item.user_id];
+          const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Pemagang';
+          const st = item.status || 'Pending';
+          
+          let tipeJenis = 'IZIN';
+          if (item.type === 'shift') tipeJenis = 'TUKAR SHIFT';
+          if (item.type === 'claim_absen') tipeJenis = 'KLAIM PRESENSI';
+
+          let badgeClass = 'badge-pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Pemohon:</b> ${pemohon} <small style="color:#2563eb;">(${tipeJenis})</small></div>
+              <div><b>Detail:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
+              
+              ${st === 'Pending' ? `
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                  <button class="btn-approve" onclick="updateStatusIzin('${item.id}', 'Disetujui')">Setujui</button>
+                  <button class="btn-reject" onclick="updateStatusIzin('${item.id}', 'Ditolak')">Tolak</button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan.</small>";
+      }
+    }
+
+    async function updateStatusIzin(id, statusBaru) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerText = `Memproses status...`;
+
+      const { error } = await supabaseClient
+        .from('requests')
+        .update({ status: statusBaru })
+        .eq('id', id);
+
+      if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        statusDiv.innerHTML = `<span style='color:green'>Status berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
+        await muatDaftarPersetujuan();
+      }
+    }
+
+async function muatMenuSuperAdmin() {
+      const { data: spvs } = await supabaseClient.from('profiles').select('*').in('role', ['supervisor', 'superadmin']);
+      listSupervisors = spvs || [];
+
+      const spvSelect = document.getElementById('adminNewSupervisor');
+      spvSelect.innerHTML = '<option value="">-- Tanpa Atasan Direct --</option>' + 
+        listSupervisors.map(s => `<option value="${s.id}">${s.nama_lengkap || s.full_name} (${s.role.toUpperCase()})</option>`).join('');
+
+      const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+      
+      const adminMagangSelect = document.getElementById('adminFilterMagang');
+      if (allUsers && allUsers.length > 0) {
+        adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Pemagang --</option>' + 
+          allUsers.filter(u => (u.role || 'magang') === 'magang').map(u => `<option value="${u.id}">${u.nama_lengkap || u.full_name}</option>`).join('');
+      }
+
+      const userListContainer = document.getElementById('adminUserList');
+      if (allUsers && allUsers.length > 0) {
+        userListContainer.innerHTML = allUsers.map(u => {
+          const namaUser = u.nama_lengkap || u.full_name || 'Pengguna';
+
+          let optionSupervisorsHtml = '<option value="">-- Tanpa Atasan --</option>';
+          listSupervisors.forEach(s => {
+            const isSel = u.supervisor_id === s.id ? 'selected' : '';
+            optionSupervisorsHtml += `<option value="${s.id}" ${isSel}>${s.nama_lengkap || s.full_name}</option>`;
+          });
+
+          return `
+            <div class="list-item user-card-item" data-name="${namaUser.toLowerCase()}">
+              <b>${namaUser}</b>
+              
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Role & Unit Kerja:</label>
+                <div style="display:flex; gap:4px;">
+                  <select id="role_${u.id}" style="padding:2px; font-size:10px;">
+                    <option value="magang" ${u.role==='magang'?'selected':''}>Magang</option>
+                    <option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor</option>
+                    <option value="superadmin" ${u.role==='superadmin'?'selected':''}>Super Admin</option>
+                  </select>
+                  <input type="text" id="unit_${u.id}" value="${u.unit_kerja || 'Umum'}" placeholder="Unit Kerja" style="padding:2px; font-size:10px;">
+                </div>
+              </div>
+
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Approval Line (Supervisor Atasan):</label>
+                <select id="spv_${u.id}" style="padding:2px; font-size:10px;">
+                  ${optionSupervisorsHtml}
+                </select>
+              </div>
+
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Reset Password Pengguna:</label>
+                <input type="password" id="resetPwd_${u.id}" placeholder="Password Baru" style="padding:2px; font-size:10px;">
+              </div>
+
+              <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                <button class="btn-secondary" style="padding:3px 6px; font-size:10px;" onclick="simpanPengaturanUser('${u.id}')">Simpan Perubahan</button>
+                <button class="btn-delete" style="padding:3px 6px; font-size:10px;" onclick="hapusUserPermanen('${u.id}', '${namaUser}')">Offboard (Hapus Permanen)</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        userListContainer.innerHTML = "<small>Tidak ada pengguna terdaftar.</small>";
+      }
+    }
+
+    // FUNGSI FILTER / PENCARIAN NAMA USER
+    function filterUserAdminList() {
+      const keyword = document.getElementById('adminSearchUser').value.toLowerCase().trim();
+      const items = document.querySelectorAll('.user-card-item');
+
+      items.forEach(item => {
+        const name = item.getAttribute('data-name');
+        if (name.includes(keyword)) {
+          item.style.display = "block";
+        } else {
+          item.style.display = "none";
+        }
+      });
+    }
+    async function muatRekapPresensiSuperAdmin() {
+      const container = document.getElementById('adminRekapList');
+      container.innerHTML = "<small>Memuat rekap presensi...</small>";
+
+      const filterUser = document.getElementById('adminFilterMagang').value;
+      const filterBulanVal = document.getElementById('adminFilterBulan').value; 
+
+      let tahun, bulan;
+      if (filterBulanVal) {
+        const parts = filterBulanVal.split('-');
+        tahun = parseInt(parts[0]);
+        bulan = parseInt(parts[1]) - 1;
+      } else {
+        const skrg = new Date();
+        tahun = skrg.getFullYear();
+        bulan = skrg.getMonth();
+      }
+
+      let liburNasional = [];
+      try {
+        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${bulan + 1}&year=${tahun}`);
+        const dataLibur = await res.json();
+        if (Array.isArray(dataLibur)) {
+          liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
+        }
+      } catch (e) { console.log("Gagal memuat libur", e); }
+
+      const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+      const usersMap = {};
+      if (allUsers) allUsers.forEach(u => usersMap[u.id] = u);
+
+      const { data: attendances } = await supabaseClient.from('attendances').select('*');
+      const { data: requests } = await supabaseClient.from('requests').select('*');
+
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
+
+      dataExportSuperAdmin = [];
+
+      let listMagangIds = Object.keys(usersMap).filter(id => (usersMap[id].role || 'magang') === 'magang');
+      if (filterUser !== 'ALL') {
+        listMagangIds = listMagangIds.filter(id => id === filterUser);
+      }
+
+      const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
+
+      listMagangIds.forEach(uId => {
+        const mUser = usersMap[uId];
+        const nama = mUser?.nama_lengkap || mUser?.full_name || 'Pemagang';
+        const unit = mUser?.unit_kerja || 'Umum';
+
+        for (let day = 1; day <= jumlahHari; day++) {
+          const d = new Date(tahun, bulan, day);
+          const dayOfWeek = d.getDay();
+          const tglStr = formatTanggalLokal(d);
+          const opsiTgl = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+          const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+          const isHariLibur = liburNasional.includes(tglStr);
+
+          const attHariIni = (attendances || []).filter(a => a.user_id === uId && bersihkanTanggal(a.created_at) === tglStr);
+          const absenMasuk = attHariIni.find(a => a.tipe === 'Masuk');
+          const absenPulang = attHariIni.find(a => a.tipe === 'Pulang');
+
+          const reqHariIni = (requests || []).filter(r => r.user_id === uId && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+          const claimApproved = reqHariIni.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
+          const izinApproved = reqHariIni.find(r => r.type === 'izin' && r.status === 'Disetujui');
+          const shiftApproved = reqHariIni.find(r => r.type === 'shift' && r.status === 'Disetujui');
+
+          let shiftKerjaText = "FT (09.00 - 17.00)";
+
+          if (isWeekend || isHariLibur) {
+            shiftKerjaText = "Day Off (00.00 - 00.00)";
+          } else if (shiftApproved) {
+            const detailText = shiftApproved.shift_choice || shiftApproved.description || '';
+            if (detailText.includes('WFH FT')) shiftKerjaText = "WFH FT (09.00 - 17.00)";
+            else if (detailText.includes('WFH EM')) shiftKerjaText = "WFH EM (08.00 - 16.00)";
+            else if (detailText.includes('EM') || detailText.includes('08.00')) shiftKerjaText = "EM (08.00 - 16.00)";
+            else shiftKerjaText = "FT (09.00 - 17.00)";
+          }
+
+          let claimMasukInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
+          let claimPulangInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Pulang'));
+
+          let jamMasuk = '-';
+          let jamPulang = '-';
+          let taggingLokasi = '-';
+          let statusAbsen = isWeekend || isHariLibur ? 'Libur' : 'Tidak Hadir';
+
+          if (absenMasuk) {
+            jamMasuk = absenMasuk.jam_masuk;
+            taggingLokasi = absenMasuk.alamat || (absenMasuk.latitude + ', ' + absenMasuk.longitude);
+          } else if (claimMasukInfo) {
+            const m = claimMasukInfo.shift_choice.match(/\((.*?)\)/);
+            jamMasuk = m ? `${m[1]} (Klaim)` : 'Klaim';
+            taggingLokasi = claimMasukInfo.description || 'Klaim Presensi Disetujui';
+          }
+
+          if (absenPulang) {
+            jamPulang = absenPulang.jam_masuk;
+            if (taggingLokasi === '-') taggingLokasi = absenPulang.alamat || (absenPulang.latitude + ', ' + absenPulang.longitude);
+          } else if (claimPulangInfo) {
+            const m = claimPulangInfo.shift_choice.match(/\((.*?)\)/);
+            jamPulang = m ? `${m[1]} (Klaim)` : 'Klaim';
+            if (taggingLokasi === '-') taggingLokasi = claimPulangInfo.description || 'Klaim Presensi Disetujui';
+          }
+
+          if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
+          if (izinApproved) {
+            statusAbsen = 'Izin (Disetujui)';
+            taggingLokasi = izinApproved.description || 'Izin Disetujui';
+          }
+
+          dataExportSuperAdmin.push({
+            tanggal: opsiTgl,
+            nama: nama,
+            unit: unit,
+            shift: shiftKerjaText,
+            jamMasuk: jamMasuk,
+            jamPulang: jamPulang,
+            taggingLokasi: taggingLokasi,
+            status: statusAbsen
+          });
+        }
+      });
+
+      if (dataExportSuperAdmin.length > 0) {
+        container.innerHTML = dataExportSuperAdmin.map(row => `
+          <div class="list-item">
+            <b>${row.nama}</b> (${row.unit}) - <small>${row.tanggal}</small><br>
+            ⏰ Shift: <b>${row.shift}</b><br>
+            📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
+            📍 Lokasi: <small style="color:#475569;">${row.taggingLokasi}</small><br>
+            Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':(row.status==='Libur'?'badge-rejected':'badge-pending')}">${row.status}</span>
+          </div>
+        `).join('');
+      } else {
+        container.innerHTML = "<small style='color:#64748b;'>Tidak ada data presensi pada periode ini.</small>";
+      }
+    }
+
+    function exportToExcel() {
+      if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
+      const dataFormatted = dataExportSuperAdmin.map(item => ({
+        "Tanggal": item.tanggal,
+        "Nama Pemagang": item.nama,
+        "Unit Kerja": item.unit,
+        "Shift Kerja": item.shift,
+        "Jam Masuk": item.jamMasuk,
+        "Jam Pulang": item.jamPulang,
+        "Tagging Lokasi / Catatan": item.taggingLokasi,
+        "Status Presensi": item.status
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataFormatted);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
+      XLSX.writeFile(wb, `Rekap_Presensi_Magang_${Date.now()}.xlsx`);
+    }
+
+    function exportToPDF() {
+      if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('landscape');
+
+      doc.text("Rekap Presensi Magang Komnas Perempuan", 14, 15);
+      
+      const tableData = dataExportSuperAdmin.map(row => [
+        row.tanggal, row.nama, row.unit, row.shift, row.jamMasuk, row.jamPulang, row.taggingLokasi, row.status
+      ]);
+
+      doc.autoTable({
+        head: [['Tanggal', 'Nama Pemagang', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Tagging Lokasi / Catatan', 'Status']],
+        body: tableData,
+        startY: 22,
+        styles: { fontSize: 7 }
+      });
+
+      doc.save(`Rekap_Presensi_Magang_${Date.now()}.pdf`);
+    }
+
+async function superAdminRegisterUser() {
+      const name = document.getElementById('adminNewName').value.trim();
+      const email = document.getElementById('adminNewEmail').value.trim();
+      const phone = document.getElementById('adminNewPhone').value.trim();
+      const password = document.getElementById('adminNewPassword').value;
+      const role = document.getElementById('adminNewRole').value;
+      const unit = document.getElementById('adminNewUnit').value.trim() || 'Umum';
+      const spvId = document.getElementById('adminNewSupervisor').value || null;
+      const status = document.getElementById('status');
+
+      if (!name || !email || !password) return status.innerHTML = "<span style='color:red'>Lengkapi nama, email, dan password!</span>";
+
+      status.innerText = "Mendaftarkan akun baru...";
+
+      const { data: authData, error: authErr } = await supabaseClient.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true
+      });
+
+      if (authErr) {
+        return status.innerHTML = `<span style='color:red'>Gagal Pendaftaran: ${authErr.message}</span>`;
+      }
+
+      if (authData?.user) {
+        const { error: profErr } = await supabaseClient.from('profiles').upsert({
+          id: authData.user.id,
+          nama_lengkap: name,
+          full_name: name,
+          phone_number: phone,
+          role: role,
+          unit_kerja: unit,
+          supervisor_id: spvId
+        });
+
+        if (profErr) {
+          status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
+        } else {
+          status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${role}) berhasil dibuat!</span>`;
+          document.getElementById('adminNewName').value = '';
+          document.getElementById('adminNewEmail').value = '';
+          document.getElementById('adminNewPhone').value = '';
+          document.getElementById('adminNewPassword').value = '';
+          document.getElementById('adminNewUnit').value = '';
+          await muatMenuSuperAdmin();
+        }
+      }
+    }
+    async function simpanPengaturanUser(targetUserId) {
+      const roleBaru = document.getElementById(`role_${targetUserId}`).value;
+      const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
+      const spvBaru = document.getElementById(`spv_${targetUserId}`).value || null;
+      const pwdBaru = document.getElementById(`resetPwd_${targetUserId}`).value;
+      const status = document.getElementById('status');
+
+      status.innerText = "Memperbarui data pengguna...";
+
+      const { error } = await supabaseClient.from('profiles').update({
+        role: roleBaru,
+        unit_kerja: unitBaru,
+        supervisor_id: spvBaru
+      }).eq('id', targetUserId);
+
+      if (error) {
+        status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+        return;
+      }
+
+      if (pwdBaru && pwdBaru.length >= 6) {
+        const { error: pwdErr } = await supabaseClient.auth.admin.updateUserById(targetUserId, { password: pwdBaru });
+        if (pwdErr) {
+          console.log("Catatan reset pwd admin:", pwdErr.message);
+        }
+      }
+
+      status.innerHTML = "<span style='color:green'>Data pengguna & Approval Line berhasil diperbarui!</span>";
+      document.getElementById(`resetPwd_${targetUserId}`).value = '';
+      await muatMenuSuperAdmin();
+    }
+
+    async function toggleStatusAktifUser(targetUserId, nonaktifkan) {
+      const status = document.getElementById('status');
+      status.innerText = "Mengubah status akun...";
+
+      const { error } = await supabaseClient.from('profiles').update({
+        status_aktif: !nonaktifkan
+      }).eq('id', targetUserId);
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = `<span style='color:green'>Akun berhasil di-${nonaktifkan?'nonaktifkan':'aktifkan'}!</span>`;
+        await muatMenuSuperAdmin();
+      }
+    }
+
+async function hapusUserPermanen(targetUserId, namaUser) {
+      if (!confirm(`Apakah Anda yakin ingin MELAKUKAN OFFBOARD / HAPUS PERMANEN pada akun ${namaUser}?\n\nPengguna tidak akan bisa login lagi dan email dapat didaftarkan ulang.`)) return;
+
+      const status = document.getElementById('status');
+      status.innerText = "Proses Offboard (Menghapus akun)...";
+
+      // 1. Hapus riwayat di tabel database
+      await supabaseClient.from('attendances').delete().eq('user_id', targetUserId);
+      await supabaseClient.from('requests').delete().eq('user_id', targetUserId);
+      const { error: profErr } = await supabaseClient.from('profiles').delete().eq('id', targetUserId);
+
+      if (profErr) {
+        return status.innerHTML = `<span style='color:red'>Gagal hapus profil: ${profErr.message}</span>`;
+      }
+
+      // 2. Hapus user dari Supabase Auth agar email bisa didaftarkan ulang tanpa error "User already registered"
+      const { error: authErr } = await supabaseClient.auth.admin.deleteUser(targetUserId);
+
+      if (authErr) {
+        status.innerHTML = `<span style='color:orange'>Profil terhapus, tetapi Auth error: ${authErr.message}</span>`;
+      } else {
+        status.innerHTML = `<span style='color:green'>Akun <b>${namaUser}</b> berhasil di-offboard dan dihapus permanen!</span>`;
+      }
+
+      await muatMenuSuperAdmin();
+    }
+
+    async function muatRekan() {
+      const { data } = await supabaseClient.from('profiles').select('*');
+      const list = document.getElementById('rekanList');
+      
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(r => {
+          const namaRekan = r.nama_lengkap || r.full_name || 'Pemagang';
+          const roleRekan = (r.role || 'magang').toUpperCase();
+          const unitRekan = r.unit_kerja || 'Umum';
+          const phoneRekan = r.phone_number || '-';
+          const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "") 
+            ? r.avatar_url 
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=2563eb&color=fff`;
+
+          return `
+            <div class="list-item" style="display:flex; align-items:center; gap:10px;">
+              <img src="${avatarRekan}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+              <div>
+                <b>${namaRekan}</b> <small style="color:#2563eb;">(${roleRekan})</small><br>
+                <small style="color:#475569;">📞 WA/Telp: ${phoneRekan}</small><br>
+                <small style="color:#64748b;">🏢 Unit: ${unitRekan}</small>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada profil rekan lain yang tersimpan.</small>";
+      }
+    }
+  </script>
+</body>
+</html>
