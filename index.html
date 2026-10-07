@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRIS Pemagang Komnas Perempuan</title>
+  <title>HRIS Komnas Perempuan</title>
   <!-- Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <!-- SheetJS untuk Export Excel -->
@@ -15,7 +15,7 @@
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
-    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 500px; text-align: center; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 520px; text-align: center; }
     h2, h3, h4 { margin-top: 0; color: #2c3e50; }
     input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
@@ -39,7 +39,8 @@
     .nav-tabs button.active { background: #2563eb; color: white; }
     .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
     .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: inline-block; }
-    .today-shift-badge { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 14px; display: block; }
+    .today-shift-badge { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: block; }
+    .saldo-badge { background: #fef3c7; border: 1px solid #fde68a; color: #b45309; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 14px; display: block; }
     .shift-card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
     .shift-off { background: #fef2f2; border: 1px solid #fecaca; }
     .absen-info { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-weight: bold; color: #1e293b; }
@@ -72,7 +73,7 @@
     <div id="mainDashboard" class="hidden">
       <img id="userAvatar" class="profile-img" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="Profile">
       <h4 id="userName" style="margin-bottom:2px;">Pengguna</h4>
-      <div id="userRoleBadge" class="role-badge">Role: Magang</div>
+      <div id="userRoleBadge" class="role-badge">Jabatan: -</div>
       <div id="userUnitBadge" class="unit-badge">Unit: Umum</div>
 
       <!-- TAB NAVIGASI -->
@@ -80,10 +81,11 @@
         <button id="tabAbsenBtn" class="active" onclick="switchTab('Presensi')">Presensi</button>
         <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
         <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanPresensi')">Klaim Presensi</button>
-        <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
+        <button id="tabCutiBtn" onclick="switchTab('cuti')">Cuti</button>
+        <button id="tabLemburBtn" onclick="switchTab('lembur')">Lembur</button>
         <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
-        <!-- TAB KHUSUS SUPERVISOR -->
+        <!-- TAB KHUSUS PERSETUJUAN (KOORDINATOR / ASISTEN KOORDINATOR / SUPER ADMIN) -->
         <button id="tabApproveBtn" class="hidden" onclick="switchTab('approve')" style="background:#f59e0b; color:white;">Persetujuan</button>
 
         <!-- TAB KHUSUS SUPER ADMIN -->
@@ -98,6 +100,7 @@
         <div class="date-badge" id="currentDateDisplay">Memuat Tanggal...</div>
         
         <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
+        <div class="saldo-badge" id="saldoCutiDisplay">🎁 Saldo Cuti Kompensasi: 0 Hari</div>
 
         <button id="btnMasuk" onclick="catatPresensi('Masuk')">Clockin</button>
         <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Clockout</button>
@@ -150,19 +153,67 @@
         <div id="riwayatClaimList" style="max-height:140px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 4: FORM & STATUS IZIN -->
-      <div id="tabIzin" class="hidden">
-        <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
-        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Izin:</label>
-        <input type="date" id="reqDate">
-        <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="3"></textarea>
-        <button class="btn-warning" onclick="kirimPengajuan('izin')">Kirim Pengajuan Izin</button>
+      <!-- TAB 4: FORM & STATUS CUTI -->
+      <div id="tabCuti" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Cuti</h4>
+        
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Jenis Cuti:</label>
+        <select id="cutiTypeSelect">
+          <option value="CT">CT (Cuti Kompensasi)</option>
+          <option value="CKAG">CKAG (Cuti Keagamaan)</option>
+          <option value="CKAP">CKAP (Cuti Karena Alasan Penting)</option>
+          <option value="SDSD">SDSD (Sakit Dengan Surat Dokter)</option>
+          <option value="STSD">STSD (Sakit Tanpa Surat Dokter)</option>
+          <option value="CL">CL (Cuti Melahirkan)</option>
+          <option value="CH">CH (Cuti Haid)</option>
+          <option value="CK">CK (Cuti Keguguran)</option>
+          <option value="CM">CM (Cuti Menikah)</option>
+          <option value="CTAHUNAN">CTAHUNAN (Cuti Tahunan)</option>
+          <option value="CB">CB (Cuti Besar)</option>
+          <option value="CKM">CKM (Cuti Keluarga Meninggal)</option>
+          <option value="CKTN">CKTN (Cuti Menjalankan Kewajiban Terhadap Negara)</option>
+        </select>
 
-        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Status Izin Saya</h4>
-        <div id="riwayatIzinList" style="max-height:140px; overflow-y:auto;"></div>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Cuti:</label>
+        <input type="date" id="reqDate">
+        <textarea id="reqDesc" placeholder="Tuliskan keterangan / alasan pengambilan cuti..." rows="3"></textarea>
+        <button class="btn-warning" onclick="kirimPengajuan('cuti')">Kirim Pengajuan Cuti</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Status Cuti Saya</h4>
+        <div id="riwayatCutiList" style="max-height:140px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 5: FORM PERUBAHAN SHIFT -->
+      <!-- TAB 5: FORM PENGAJUAN LEMBUR -->
+      <div id="tabLembur" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Lembur</h4>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Lembur:</label>
+        <input type="date" id="lemburReqDate">
+
+        <div class="time-container">
+          <div>
+            <label style="font-size:11px; display:block; margin-top:4px;">Jam Mulai Lembur:</label>
+            <input type="time" id="lemburTimeStart" value="09:00">
+          </div>
+          <div>
+            <label style="font-size:11px; display:block; margin-top:4px;">Jam Selesai Lembur:</label>
+            <input type="time" id="lemburTimeEnd" value="17:00">
+          </div>
+        </div>
+
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Opsi Kompensasi Lembur:</label>
+        <select id="lemburKompensasiSelect">
+          <option value="Upah Lembur">Upah Lembur</option>
+          <option value="Saldo Cuti Kompensasi">Saldo Cuti Kompensasi (Min 8 Jam di Hari Libur = +1 Hari)</option>
+        </select>
+
+        <textarea id="lemburReqDesc" placeholder="Tuliskan uraian tugas/alasan lembur..." rows="3"></textarea>
+        <button class="btn-secondary" onclick="kirimPengajuan('lembur')">Kirim Pengajuan Lembur</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Pengajuan Lembur Saya</h4>
+        <div id="riwayatLemburList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 6: FORM PERUBAHAN SHIFT -->
       <div id="tabTukarShift" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Perubahan Shift</h4>
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Perubahan Shift:</label>
@@ -183,9 +234,9 @@
         <div id="riwayatShiftList" style="max-height:140px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB KHUSUS SUPERVISOR: PERSETUJUAN -->
+      <!-- TAB PERSETUJUAN PERMOHONAN -->
       <div id="tabApprove" class="hidden">
-        <h4 style="margin-bottom:8px;">Daftar Pengajuan Pemagang</h4>
+        <h4 style="margin-bottom:8px;">Daftar Pengajuan Anggota / Bawahan</h4>
         <div id="approvalList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
@@ -194,9 +245,9 @@
         <h4 style="margin-bottom:8px;">Rekap Presensi Keseluruhan (Super Admin)</h4>
         
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
-          <label style="font-size:11px; font-weight:bold;">Filter Pemagang:</label>
+          <label style="font-size:11px; font-weight:bold;">Filter Pegawai:</label>
           <select id="adminFilterMagang" onchange="muatRekapPresensiSuperAdmin()">
-            <option value="ALL">-- Semua Pemagang --</option>
+            <option value="ALL">-- Semua Pegawai --</option>
           </select>
 
           <label style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Filter Bulan & Tahun:</label>
@@ -220,17 +271,21 @@
           <input type="tel" id="adminNewPhone" placeholder="Nomor Telepon / WA">
           <input type="password" id="adminNewPassword" placeholder="Password (Min. 6 Karakter)">
           
-          <label style="font-size:11px;">Role Akun:</label>
+          <label style="font-size:11px;">Tingkatan / Jabatan:</label>
           <select id="adminNewRole">
-            <option value="magang">Pemagang</option>
-            <option value="supervisor">Supervisor Pemagang</option>
+            <option value="koordinator">Koordinator</option>
+            <option value="asisten_koordinator">Asisten Koordinator</option>
+            <option value="staf_divisi">Staf Divisi/Bidang</option>
+            <option value="analis">Tenaga Pendukung Analis (Setara Koordinator)</option>
+            <option value="teknis">Tenaga Pendukung Teknis (Setara Asisten Koordinator)</option>
+            <option value="administrasi">Tenaga Pendukung Administrasi (Setara Staf Divisi/Bidang)</option>
             <option value="superadmin">Super Admin</option>
           </select>
 
-          <label style="font-size:11px;">Unit Kerja:</label>
-          <input type="text" id="adminNewUnit" placeholder="Contoh: Divisi IT, Humas, Legal">
+          <label style="font-size:11px;">Unit Kerja / Divisi:</label>
+          <input type="text" id="adminNewUnit" placeholder="Contoh: Divisi IT, Humas, Pemantauan, dll">
 
-          <label style="font-size:11px;">Pilih Supervisor Atasan:</label>
+          <label style="font-size:11px;">Pilih Atasan Direct (Approval Line):</label>
           <select id="adminNewSupervisor">
             <option value="">-- Tanpa Atasan Direct --</option>
           </select>
@@ -238,31 +293,31 @@
           <button class="btn-purple" onclick="superAdminRegisterUser()">Buat Akun Baru</button>
         </div>
 
-<!-- TAB SUPER ADMIN: KELOLA AKUN -->
-        <h4 style="margin-bottom:6px;">Kelola Akun, Atasan, Offboard & Password</h4>
+        <!-- TAB SUPER ADMIN: KELOLA AKUN -->
+        <h4 style="margin-bottom:6px;">Kelola Akun, Saldo Cuti, Offboard & Password</h4>
         
-        <!-- INPUT FILTER / PENCARIAN USER -->
         <input type="text" id="adminSearchUser" placeholder="🔍 Cari nama pengguna..." onkeyup="filterUserAdminList()" style="margin-bottom:8px;">
         
         <div id="adminUserList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 6: DIREKTORI REKAN -->
+      <!-- TAB 7: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
-        <h4>Daftar Rekan Pemagang</h4>
+        <h4>Daftar Rekan Kerja</h4>
         <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 7: PROFIL & FOTO -->
+      <!-- TAB 8: PROFIL & FOTO -->
       <div id="tabProfil" class="hidden">
         <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
         <input type="tel" id="editPhoneNumber" placeholder="Nomor Telepon / WA">
         
         <div style="text-align:left; font-size:11px; margin:6px 0; background:#f8fafc; padding:8px; border-radius:6px;">
           <div><b>Email:</b> <span id="profileEmailText">-</span></div>
-          <div><b>Role Akun:</b> <span id="profileRoleText">-</span></div>
+          <div><b>Jabatan:</b> <span id="profileRoleText">-</span></div>
           <div><b>Unit Kerja:</b> <span id="profileUnitText">-</span></div>
-          <div><b>Supervisor:</b> <span id="profileSupervisorText">-</span></div>
+          <div><b>Atasan Direct:</b> <span id="profileSupervisorText">-</span></div>
+          <div><b>Saldo Cuti Kompensasi:</b> <span id="profileSaldoText">0 Hari</span></div>
         </div>
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Pilih Foto Profil:</label>
@@ -288,10 +343,23 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // KOORDINAT KANTOR MENTENG JAKARTA PUSAT (QRWP+C6 Menteng)
+    // KOORDINAT KANTOR MENTENG JAKARTA PUSAT
     const OFFICE_LAT = -6.1964;
     const OFFICE_LNG = 106.8355;
-    const MAX_RADIUS_KM = 1.5; // RADIUS 1500 METER
+    const MAX_RADIUS_KM = 1.5; 
+
+    // KAMUS LABEL TINGKATAN / JABATAN
+    const ROLE_LABELS = {
+      'koordinator': 'Koordinator',
+      'asisten_koordinator': 'Asisten Koordinator',
+      'staf_divisi': 'Staf Divisi/Bidang',
+      'analis': 'Tenaga Pendukung Analis (Setara Koordinator)',
+      'teknis': 'Tenaga Pendukung Teknis (Setara Asisten Koordinator)',
+      'administrasi': 'Tenaga Pendukung Administrasi (Setara Staf Divisi/Bidang)',
+      'superadmin': 'Super Admin',
+      'magang': 'Pemagang',
+      'supervisor': 'Supervisor'
+    };
 
     let currentUser = null;
     let userProfile = null;
@@ -299,6 +367,10 @@
     let userRequests = [];
     let listSupervisors = [];
     let dataExportSuperAdmin = [];
+
+    function formatRoleLabel(roleKey) {
+      return ROLE_LABELS[roleKey] || roleKey || 'Pegawai';
+    }
 
     function hitungJarak(lat1, lon1, lat2, lon2) {
       const R = 6371; 
@@ -350,6 +422,7 @@
       document.getElementById('reqDate').value = formatTanggalLokal(new Date());
       document.getElementById('shiftReqDate').value = formatTanggalLokal(new Date());
       document.getElementById('claimReqDate').value = formatTanggalLokal(new Date());
+      document.getElementById('lemburReqDate').value = formatTanggalLokal(new Date());
       inisialisasiDefaultBulan();
     }
 
@@ -365,7 +438,8 @@
         await muatRiwayat();
         await muatShiftHariIni();
         await muatJadwalShift();
-        await muatRiwayatIzin();
+        await muatRiwayatCuti();
+        await muatRiwayatLembur();
         await muatRiwayatShift();
         await muatRiwayatClaim();
       }
@@ -388,7 +462,7 @@
     }
 
     function switchTab(tabName) {
-      ['absen', 'shift', 'ajukanAbsen', 'izin', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
+      ['absen', 'shift', 'ajukanAbsen', 'cuti', 'lembur', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
         const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
         if (el) el.classList.add('hidden');
@@ -409,7 +483,8 @@
       if (tabName === 'rekan') muatRekan();
       if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
       if (tabName === 'ajukanAbsen') muatRiwayatClaim();
-      if (tabName === 'izin') muatRiwayatIzin();
+      if (tabName === 'cuti') muatRiwayatCuti();
+      if (tabName === 'lembur') muatRiwayatLembur();
       if (tabName === 'tukarShift') muatRiwayatShift();
       if (tabName === 'approve') muatDaftarPersetujuan();
       if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
@@ -436,9 +511,8 @@
           if(geoData.display_name) alamatTeks = geoData.display_name;
         } catch (e) { console.log("Geocoding Error:", e); }
 
-        // JIKA DI LUAR RADIUS 100 METER -> CATAT LOKASI & OTOMATIS BUAT KLAIM
         if (jarakKm > MAX_RADIUS_KM) {
-          statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakMeter}m) di luar radius kantor (100m).</b><br>Mencatat lokasi & mengajukan klaim presensi...</span>`;
+          statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakMeter}m) di luar radius kantor.</b><br>Mencatat lokasi & mengajukan klaim presensi...</span>`;
           
           const shiftChoiceText = `${tipeAbsen} (${jamSekarang})`;
           const descClaim = `[Luar Radius ${jarakMeter}m] Absen ${tipeAbsen} pada ${jamSekarang} WIB. Lokasi: ${alamatTeks}`;
@@ -462,7 +536,6 @@
           return;
         }
 
-        // JIKA DALAM RADIUS <= 100 METER -> LANGSUNG SIMPAN MASUK/PULANG
         const { error } = await supabaseClient
           .from('attendances')
           .insert([{ 
@@ -616,9 +689,9 @@
         return;
       }
 
-      const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
-      if (reqIzinHariIni) {
-        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#d97706;'>IZIN DISETUJUI</span>";
+      const reqCutiHariIni = userRequests.find(r => (r.type === 'cuti' || r.type === 'izin') && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
+      if (reqCutiHariIni) {
+        display.innerHTML = `⏰ Shift Hari Ini: <span style='color:#d97706;'>CUTI DISETUJUI (${reqCutiHariIni.shift_choice || 'CUTI'})</span>`;
         return;
       }
 
@@ -705,7 +778,8 @@
           detailAbsenHtml = `<div class="absen-info">📌 Masuk: ${jamMasukVal} | Pulang: ${jamPulangVal}</div>`;
         }
 
-        const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+        const reqCutiHariIni = userRequests.find(r => (r.type === 'cuti' || r.type === 'izin') && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+        const reqLemburHariIni = userRequests.find(r => r.type === 'lembur' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
         const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
 
         let statusKeterangan = '';
@@ -727,12 +801,22 @@
           }
         }
 
-        if (reqIzinHariIni) {
-          const stIzin = reqIzinHariIni.status || 'Pending';
-          if (stIzin === 'Disetujui') {
-            statusKeterangan += `<br><span class="status-badge-info badge-approved">✉️ IZIN DISETUJUI</span>`;
-          } else if (stIzin === 'Pending') {
-            statusKeterangan += `<br><span class="status-badge-info badge-pending">✉️ Pengajuan Izin (Pending)</span>`;
+        if (reqCutiHariIni) {
+          const stCuti = reqCutiHariIni.status || 'Pending';
+          const jenisCutiLabel = reqCutiHariIni.shift_choice || 'CUTI';
+          if (stCuti === 'Disetujui') {
+            statusKeterangan += `<br><span class="status-badge-info badge-approved">🌴 CUTI DISETUJUI (${jenisCutiLabel})</span>`;
+          } else if (stCuti === 'Pending') {
+            statusKeterangan += `<br><span class="status-badge-info badge-pending">🌴 Pengajuan Cuti (${jenisCutiLabel}) (Pending)</span>`;
+          }
+        }
+
+        if (reqLemburHariIni) {
+          const stLembur = reqLemburHariIni.status || 'Pending';
+          if (stLembur === 'Disetujui') {
+            statusKeterangan += `<br><span class="status-badge-info badge-approved">🌙 LEMBUR DISETUJUI</span>`;
+          } else if (stLembur === 'Pending') {
+            statusKeterangan += `<br><span class="status-badge-info badge-pending">🌙 Pengajuan Lembur (Pending)</span>`;
           }
         }
 
@@ -749,7 +833,7 @@
           html += `
             <div class="shift-card">
               <b>${opsiTgl}</b>: <span style="color:#16a34a; font-weight:bold;">${shiftWaktuText}</span>
-              <small style="display:block; color:#15803d;">Shift Reguler Magang</small>
+              <small style="display:block; color:#15803d;">Shift Reguler</small>
               ${statusKeterangan}
               ${detailAbsenHtml}
             </div>
@@ -764,17 +848,21 @@
       if (data) {
         userProfile = data;
         const nama = data.nama_lengkap || data.full_name || currentUser.email;
-        const role = data.role || 'magang';
+        const role = data.role || 'staf_divisi';
+        const roleText = formatRoleLabel(role);
         const unit = data.unit_kerja || 'Umum';
         const phone = data.phone_number || '';
+        const saldoCuti = data.saldo_cuti_kompensasi || 0;
 
         document.getElementById('userName').innerText = nama;
-        document.getElementById('userRoleBadge').innerText = `Role: ${role.toUpperCase()}`;
+        document.getElementById('userRoleBadge').innerText = `Jabatan: ${roleText}`;
         document.getElementById('userUnitBadge').innerText = `Unit: ${unit}`;
 
         document.getElementById('profileEmailText').innerText = currentUser.email;
-        document.getElementById('profileRoleText').innerText = role.toUpperCase();
+        document.getElementById('profileRoleText').innerText = roleText;
         document.getElementById('profileUnitText').innerText = unit;
+        document.getElementById('profileSaldoText').innerText = `${saldoCuti} Hari`;
+        document.getElementById('saldoCutiDisplay').innerText = `🎁 Saldo Cuti Kompensasi: ${saldoCuti} Hari`;
 
         if (data.supervisor_id) {
           const { data: spvData } = await supabaseClient.from('profiles').select('nama_lengkap, full_name').eq('id', data.supervisor_id).single();
@@ -783,7 +871,8 @@
           document.getElementById('profileSupervisorText').innerText = '-';
         }
 
-        if (role === 'supervisor' || role === 'superadmin') {
+        const canApprove = ['koordinator', 'asisten_koordinator', 'analis', 'teknis', 'supervisor', 'superadmin'].includes(role);
+        if (canApprove) {
           document.getElementById('tabApproveBtn').classList.remove('hidden');
         } else {
           document.getElementById('tabApproveBtn').classList.add('hidden');
@@ -860,9 +949,25 @@
       let desc = '';
       let shiftChoice = null;
 
-      if (jenisType === 'izin') {
+      if (jenisType === 'cuti') {
         selectedDate = document.getElementById('reqDate').value;
         desc = document.getElementById('reqDesc').value.trim();
+        shiftChoice = document.getElementById('cutiTypeSelect').value;
+
+        if (shiftChoice === 'CT') {
+          const saldo = userProfile?.saldo_cuti_kompensasi || 0;
+          if (saldo < 1) {
+            return status.innerHTML = "<span style='color:red'>Saldo Cuti Kompensasi Anda 0 Hari. Anda tidak bisa mengajukan CT!</span>";
+          }
+        }
+      } else if (jenisType === 'lembur') {
+        selectedDate = document.getElementById('lemburReqDate').value;
+        const timeStart = document.getElementById('lemburTimeStart').value || '09:00';
+        const timeEnd = document.getElementById('lemburTimeEnd').value || '17:00';
+        const opsiKompensasi = document.getElementById('lemburKompensasiSelect').value;
+        desc = document.getElementById('lemburReqDesc').value.trim();
+        
+        shiftChoice = `${timeStart} - ${timeEnd} | Kompensasi: ${opsiKompensasi}`;
       } else if (jenisType === 'shift') {
         selectedDate = document.getElementById('shiftReqDate').value;
         desc = document.getElementById('shiftReqDesc').value.trim();
@@ -916,16 +1021,18 @@
       }
 
       if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal wajib dipilih!</span>";
-      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan wajib diisi!</span>";
+      if (!desc) return status.innerHTML = "<span style='color:red'>Keterangan/Alasan wajib diisi!</span>";
 
       status.innerText = "Mengirim pengajuan...";
       let fullDescription = `[Tanggal: ${selectedDate}] ${desc}`;
+      if (jenisType === 'cuti') fullDescription = `[Tanggal: ${selectedDate}] Jenis: ${shiftChoice} - ${desc}`;
+      if (jenisType === 'lembur') fullDescription = `[Tanggal: ${selectedDate}] Lembur (${shiftChoice}) - ${desc}`;
       if (jenisType === 'shift') fullDescription = `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}`;
       if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Absen ${shiftChoice} - ${desc}`;
 
       const { error } = await supabaseClient.from('requests').insert([{ 
         user_id: currentUser.id, 
-        type: jenisType, 
+        type: jenisType === 'cuti' ? 'cuti' : jenisType, 
         shift_choice: shiftChoice,
         description: fullDescription,
         date: selectedDate,
@@ -935,9 +1042,12 @@
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
         status.innerHTML = "<span style='color:green'>Pengajuan berhasil dikirim!</span>";
-        if (jenisType === 'izin') {
+        if (jenisType === 'cuti') {
           document.getElementById('reqDesc').value = "";
-          await muatRiwayatIzin();
+          await muatRiwayatCuti();
+        } else if (jenisType === 'lembur') {
+          document.getElementById('lemburReqDesc').value = "";
+          await muatRiwayatLembur();
         } else if (jenisType === 'shift') {
           document.getElementById('shiftReqDesc').value = "";
           await muatRiwayatShift();
@@ -952,13 +1062,13 @@
       }
     }
 
-    async function muatRiwayatIzin() {
-      const list = document.getElementById('riwayatIzinList');
+    async function muatRiwayatCuti() {
+      const list = document.getElementById('riwayatCutiList');
       const { data } = await supabaseClient
         .from('requests')
         .select('*')
         .eq('user_id', currentUser.id)
-        .eq('type', 'izin')
+        .in('type', ['cuti', 'izin'])
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
@@ -970,13 +1080,43 @@
 
           return `
             <div class="list-item">
+              <div><b>Jenis Cuti:</b> <span style="color:#2563eb; font-weight:bold;">${item.shift_choice || 'Cuti'}</span></div>
               <div><b>Keterangan:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
             </div>
           `;
         }).join('');
       } else {
-        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin.</small>";
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan cuti.</small>";
+      }
+    }
+
+    async function muatRiwayatLembur() {
+      const list = document.getElementById('riwayatLemburList');
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'lembur')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => {
+          let badgeClass = 'badge-pending';
+          const st = item.status || 'Pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Detail Lembur:</b> ${item.shift_choice || '-'}</div>
+              <div><b>Keterangan:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan lembur.</small>";
       }
     }
 
@@ -1068,16 +1208,18 @@
         });
 
         if (filteredReqs.length === 0) {
-          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari pemagang bimbingan Anda.</small>";
+          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari anggota unit/bimbingan Anda.</small>";
           return;
         }
 
         list.innerHTML = filteredReqs.map(item => {
           const pemohonProfile = profilesMap[item.user_id];
-          const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Pemagang';
+          const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Pegawai';
+          const pemohonRole = formatRoleLabel(pemohonProfile?.role);
           const st = item.status || 'Pending';
           
-          let tipeJenis = 'IZIN';
+          let tipeJenis = 'CUTI';
+          if (item.type === 'lembur') tipeJenis = 'LEMBUR';
           if (item.type === 'shift') tipeJenis = 'TUKAR SHIFT';
           if (item.type === 'claim_absen') tipeJenis = 'KLAIM PRESENSI';
 
@@ -1087,7 +1229,8 @@
 
           return `
             <div class="list-item">
-              <div><b>Pemohon:</b> ${pemohon} <small style="color:#2563eb;">(${tipeJenis})</small></div>
+              <div><b>Pemohon:</b> ${pemohon} <small style="color:#64748b;">(${pemohonRole})</small></div>
+              <div><b>Jenis:</b> <span style="color:#2563eb; font-weight:bold;">${tipeJenis}</span></div>
               <div><b>Detail:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
               
@@ -1105,9 +1248,70 @@
       }
     }
 
+    async function hitungDurasiJam(jamAwal, jamAkhir) {
+      if (!jamAwal || !jamAkhir) return 0;
+      const [h1, m1] = jamAwal.split(':').map(Number);
+      const [h2, m2] = jamAkhir.split(':').map(Number);
+      let selisihMenit = (h2 * 60 + m2) - (h1 * 60 + m1);
+      if (selisihMenit < 0) selisihMenit += 24 * 60; // penanganan lewat tengah malam
+      return selisihMenit / 60;
+    }
+
     async function updateStatusIzin(id, statusBaru) {
       const statusDiv = document.getElementById('status');
       statusDiv.innerText = `Memproses status...`;
+
+      // Ambil detail pengajuan
+      const { data: reqData } = await supabaseClient.from('requests').select('*').eq('id', id).single();
+
+      if (reqData) {
+        // PERINTAH PENAMBAHAN / PENGURANGAN SALDO CUTI KOMPENSASI SAAT DI-APPROVE
+        if (statusBaru === 'Disetujui') {
+          const targetUserId = reqData.user_id;
+          const { data: targetProfile } = await supabaseClient.from('profiles').select('*').eq('id', targetUserId).single();
+          let currentSaldo = targetProfile?.saldo_cuti_kompensasi || 0;
+
+          // 1. Jika Lembur Memilih "Saldo Cuti Kompensasi"
+          if (reqData.type === 'lembur' && reqData.shift_choice && reqData.shift_choice.includes('Saldo Cuti Kompensasi')) {
+            const tglLembur = reqData.date;
+            const dObj = new Date(tglLembur + 'T00:00:00');
+            const dayOfWeek = dObj.getDay();
+
+            // Cek Libur Nasional
+            let isLiburNasional = false;
+            try {
+              const res = await fetch(`https://dayoffapi.vercel.app/api?month=${dObj.getMonth() + 1}&year=${dObj.getFullYear()}`);
+              const dataLibur = await res.json();
+              if (Array.isArray(dataLibur)) {
+                isLiburNasional = dataLibur.some(l => l.is_holiday && l.holiday_date === tglLembur);
+              }
+            } catch(e) {}
+
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            
+            // Hitung jam durasi
+            let durasiJam = 0;
+            const matchTime = reqData.shift_choice.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+            if (matchTime) {
+              durasiJam = await hitungDurasiJam(matchTime[1], matchTime[2]);
+            }
+
+            // Syarat: Minimal 8 Jam di Hari Libur (Weekend/Libur Nasional)
+            if ((isWeekend || isLiburNasional) && durasiJam >= 8) {
+              const newSaldo = currentSaldo + 1;
+              await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldo }).eq('id', targetUserId);
+              console.log(`Saldo Cuti Kompensasi +1 disetujui untuk ${targetUserId}`);
+            }
+          }
+
+          // 2. Jika Pengajuan Cuti Kompensasi (CT)
+          if ((reqData.type === 'cuti' || reqData.type === 'izin') && reqData.shift_choice === 'CT') {
+            const newSaldo = Math.max(0, currentSaldo - 1);
+            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldo }).eq('id', targetUserId);
+            console.log(`Saldo Cuti Kompensasi -1 untuk ${targetUserId}`);
+          }
+        }
+      }
 
       const { error } = await supabaseClient
         .from('requests')
@@ -1117,24 +1321,25 @@
       if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
         statusDiv.innerHTML = `<span style='color:green'>Status berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
+        await muatProfil();
         await muatDaftarPersetujuan();
       }
     }
 
-async function muatMenuSuperAdmin() {
-      const { data: spvs } = await supabaseClient.from('profiles').select('*').in('role', ['supervisor', 'superadmin']);
+    async function muatMenuSuperAdmin() {
+      const { data: spvs } = await supabaseClient.from('profiles').select('*');
       listSupervisors = spvs || [];
 
       const spvSelect = document.getElementById('adminNewSupervisor');
       spvSelect.innerHTML = '<option value="">-- Tanpa Atasan Direct --</option>' + 
-        listSupervisors.map(s => `<option value="${s.id}">${s.nama_lengkap || s.full_name} (${s.role.toUpperCase()})</option>`).join('');
+        listSupervisors.map(s => `<option value="${s.id}">${s.nama_lengkap || s.full_name} (${formatRoleLabel(s.role)})</option>`).join('');
 
       const { data: allUsers } = await supabaseClient.from('profiles').select('*');
       
       const adminMagangSelect = document.getElementById('adminFilterMagang');
       if (allUsers && allUsers.length > 0) {
-        adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Pemagang --</option>' + 
-          allUsers.filter(u => (u.role || 'magang') === 'magang').map(u => `<option value="${u.id}">${u.nama_lengkap || u.full_name}</option>`).join('');
+        adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Pegawai --</option>' + 
+          allUsers.map(u => `<option value="${u.id}">${u.nama_lengkap || u.full_name} (${formatRoleLabel(u.role)})</option>`).join('');
       }
 
       const userListContainer = document.getElementById('adminUserList');
@@ -1144,8 +1349,10 @@ async function muatMenuSuperAdmin() {
 
           let optionSupervisorsHtml = '<option value="">-- Tanpa Atasan --</option>';
           listSupervisors.forEach(s => {
-            const isSel = u.supervisor_id === s.id ? 'selected' : '';
-            optionSupervisorsHtml += `<option value="${s.id}" ${isSel}>${s.nama_lengkap || s.full_name}</option>`;
+            if (s.id !== u.id) {
+              const isSel = u.supervisor_id === s.id ? 'selected' : '';
+              optionSupervisorsHtml += `<option value="${s.id}" ${isSel}>${s.nama_lengkap || s.full_name} (${formatRoleLabel(s.role)})</option>`;
+            }
           });
 
           return `
@@ -1153,19 +1360,30 @@ async function muatMenuSuperAdmin() {
               <b>${namaUser}</b>
               
               <div style="margin-top:4px;">
-                <label style="font-size:10px; display:block;">Role & Unit Kerja:</label>
-                <div style="display:flex; gap:4px;">
-                  <select id="role_${u.id}" style="padding:2px; font-size:10px;">
-                    <option value="magang" ${u.role==='magang'?'selected':''}>Magang</option>
-                    <option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor</option>
-                    <option value="superadmin" ${u.role==='superadmin'?'selected':''}>Super Admin</option>
-                  </select>
-                  <input type="text" id="unit_${u.id}" value="${u.unit_kerja || 'Umum'}" placeholder="Unit Kerja" style="padding:2px; font-size:10px;">
-                </div>
+                <label style="font-size:10px; display:block;">Jabatan / Tingkatan:</label>
+                <select id="role_${u.id}" style="padding:2px; font-size:10px; width:100%;">
+                  <option value="koordinator" ${u.role==='koordinator'?'selected':''}>Koordinator</option>
+                  <option value="asisten_koordinator" ${u.role==='asisten_koordinator'?'selected':''}>Asisten Koordinator</option>
+                  <option value="staf_divisi" ${u.role==='staf_divisi'?'selected':''}>Staf Divisi/Bidang</option>
+                  <option value="analis" ${u.role==='analis'?'selected':''}>Tenaga Pendukung Analis (Setara Koordinator)</option>
+                  <option value="teknis" ${u.role==='teknis'?'selected':''}>Tenaga Pendukung Teknis (Setara Asisten Koordinator)</option>
+                  <option value="administrasi" ${u.role==='administrasi'?'selected':''}>Tenaga Pendukung Administrasi (Setara Staf Divisi/Bidang)</option>
+                  <option value="superadmin" ${u.role==='superadmin'?'selected':''}>Super Admin</option>
+                </select>
               </div>
 
               <div style="margin-top:4px;">
-                <label style="font-size:10px; display:block;">Approval Line (Supervisor Atasan):</label>
+                <label style="font-size:10px; display:block;">Unit Kerja / Divisi:</label>
+                <input type="text" id="unit_${u.id}" value="${u.unit_kerja || 'Umum'}" placeholder="Unit Kerja" style="padding:2px; font-size:10px;">
+              </div>
+
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Saldo Cuti Kompensasi (Hari):</label>
+                <input type="number" id="saldo_${u.id}" value="${u.saldo_cuti_kompensasi || 0}" min="0" style="padding:2px; font-size:10px;">
+              </div>
+
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Approval Line (Atasan Direct):</label>
                 <select id="spv_${u.id}" style="padding:2px; font-size:10px;">
                   ${optionSupervisorsHtml}
                 </select>
@@ -1188,7 +1406,6 @@ async function muatMenuSuperAdmin() {
       }
     }
 
-    // FUNGSI FILTER / PENCARIAN NAMA USER
     function filterUserAdminList() {
       const keyword = document.getElementById('adminSearchUser').value.toLowerCase().trim();
       const items = document.querySelectorAll('.user-card-item');
@@ -1202,6 +1419,7 @@ async function muatMenuSuperAdmin() {
         }
       });
     }
+
     async function muatRekapPresensiSuperAdmin() {
       const container = document.getElementById('adminRekapList');
       container.innerHTML = "<small>Memuat rekap presensi...</small>";
@@ -1244,16 +1462,17 @@ async function muatMenuSuperAdmin() {
 
       dataExportSuperAdmin = [];
 
-      let listMagangIds = Object.keys(usersMap).filter(id => (usersMap[id].role || 'magang') === 'magang');
+      let listUserIds = Object.keys(usersMap);
       if (filterUser !== 'ALL') {
-        listMagangIds = listMagangIds.filter(id => id === filterUser);
+        listUserIds = listUserIds.filter(id => id === filterUser);
       }
 
       const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
 
-      listMagangIds.forEach(uId => {
+      listUserIds.forEach(uId => {
         const mUser = usersMap[uId];
-        const nama = mUser?.nama_lengkap || mUser?.full_name || 'Pemagang';
+        const nama = mUser?.nama_lengkap || mUser?.full_name || 'Pegawai';
+        const role = formatRoleLabel(mUser?.role);
         const unit = mUser?.unit_kerja || 'Umum';
 
         for (let day = 1; day <= jumlahHari; day++) {
@@ -1271,7 +1490,8 @@ async function muatMenuSuperAdmin() {
 
           const reqHariIni = (requests || []).filter(r => r.user_id === uId && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
           const claimApproved = reqHariIni.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
-          const izinApproved = reqHariIni.find(r => r.type === 'izin' && r.status === 'Disetujui');
+          const cutiApproved = reqHariIni.find(r => (r.type === 'cuti' || r.type === 'izin') && r.status === 'Disetujui');
+          const lemburApproved = reqHariIni.find(r => r.type === 'lembur' && r.status === 'Disetujui');
           const shiftApproved = reqHariIni.find(r => r.type === 'shift' && r.status === 'Disetujui');
 
           let shiftKerjaText = "FT (09.00 - 17.00)";
@@ -1313,18 +1533,25 @@ async function muatMenuSuperAdmin() {
           }
 
           if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
-          if (izinApproved) {
-            statusAbsen = 'Izin (Disetujui)';
-            taggingLokasi = izinApproved.description || 'Izin Disetujui';
+          if (cutiApproved) {
+            statusAbsen = `Cuti (${cutiApproved.shift_choice || 'Disetujui'})`;
+            taggingLokasi = cutiApproved.description || 'Cuti Disetujui';
+          }
+
+          let infoLemburText = '-';
+          if (lemburApproved) {
+            infoLemburText = `${lemburApproved.shift_choice || ''}`;
           }
 
           dataExportSuperAdmin.push({
             tanggal: opsiTgl,
             nama: nama,
+            role: role,
             unit: unit,
             shift: shiftKerjaText,
             jamMasuk: jamMasuk,
             jamPulang: jamPulang,
+            lembur: infoLemburText,
             taggingLokasi: taggingLokasi,
             status: statusAbsen
           });
@@ -1334,9 +1561,10 @@ async function muatMenuSuperAdmin() {
       if (dataExportSuperAdmin.length > 0) {
         container.innerHTML = dataExportSuperAdmin.map(row => `
           <div class="list-item">
-            <b>${row.nama}</b> (${row.unit}) - <small>${row.tanggal}</small><br>
+            <b>${row.nama}</b> <small style="color:#2563eb;">(${row.role} - ${row.unit})</small> - <small>${row.tanggal}</small><br>
             ⏰ Shift: <b>${row.shift}</b><br>
             📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
+            🌙 Lembur: ${row.lembur}<br>
             📍 Lokasi: <small style="color:#475569;">${row.taggingLokasi}</small><br>
             Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':(row.status==='Libur'?'badge-rejected':'badge-pending')}">${row.status}</span>
           </div>
@@ -1350,11 +1578,13 @@ async function muatMenuSuperAdmin() {
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const dataFormatted = dataExportSuperAdmin.map(item => ({
         "Tanggal": item.tanggal,
-        "Nama Pemagang": item.nama,
+        "Nama Pegawai": item.nama,
+        "Jabatan / Tingkatan": item.role,
         "Unit Kerja": item.unit,
         "Shift Kerja": item.shift,
         "Jam Masuk": item.jamMasuk,
         "Jam Pulang": item.jamPulang,
+        "Keterangan Lembur": item.lembur,
         "Tagging Lokasi / Catatan": item.taggingLokasi,
         "Status Presensi": item.status
       }));
@@ -1362,7 +1592,7 @@ async function muatMenuSuperAdmin() {
       const ws = XLSX.utils.json_to_sheet(dataFormatted);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
-      XLSX.writeFile(wb, `Rekap_Presensi_Magang_${Date.now()}.xlsx`);
+      XLSX.writeFile(wb, `Rekap_Presensi_Komnas_Perempuan_${Date.now()}.xlsx`);
     }
 
     function exportToPDF() {
@@ -1370,23 +1600,23 @@ async function muatMenuSuperAdmin() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape');
 
-      doc.text("Rekap Presensi Magang Komnas Perempuan", 14, 15);
+      doc.text("Rekap Presensi Komnas Perempuan", 14, 15);
       
       const tableData = dataExportSuperAdmin.map(row => [
-        row.tanggal, row.nama, row.unit, row.shift, row.jamMasuk, row.jamPulang, row.taggingLokasi, row.status
+        row.tanggal, row.nama, row.role, row.unit, row.shift, row.jamMasuk, row.jamPulang, row.lembur, row.status
       ]);
 
       doc.autoTable({
-        head: [['Tanggal', 'Nama Pemagang', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Tagging Lokasi / Catatan', 'Status']],
+        head: [['Tanggal', 'Nama Pegawai', 'Jabatan', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Lembur', 'Status']],
         body: tableData,
         startY: 22,
         styles: { fontSize: 7 }
       });
 
-      doc.save(`Rekap_Presensi_Magang_${Date.now()}.pdf`);
+      doc.save(`Rekap_Presensi_Komnas_Perempuan_${Date.now()}.pdf`);
     }
 
-async function superAdminRegisterUser() {
+    async function superAdminRegisterUser() {
       const name = document.getElementById('adminNewName').value.trim();
       const email = document.getElementById('adminNewEmail').value.trim();
       const phone = document.getElementById('adminNewPhone').value.trim();
@@ -1418,13 +1648,14 @@ async function superAdminRegisterUser() {
           phone_number: phone,
           role: role,
           unit_kerja: unit,
-          supervisor_id: spvId
+          supervisor_id: spvId,
+          saldo_cuti_kompensasi: 0
         });
 
         if (profErr) {
           status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
         } else {
-          status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${role}) berhasil dibuat!</span>`;
+          status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${formatRoleLabel(role)}) berhasil dibuat!</span>`;
           document.getElementById('adminNewName').value = '';
           document.getElementById('adminNewEmail').value = '';
           document.getElementById('adminNewPhone').value = '';
@@ -1434,9 +1665,11 @@ async function superAdminRegisterUser() {
         }
       }
     }
+
     async function simpanPengaturanUser(targetUserId) {
       const roleBaru = document.getElementById(`role_${targetUserId}`).value;
       const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
+      const saldoBaru = parseInt(document.getElementById(`saldo_${targetUserId}`).value) || 0;
       const spvBaru = document.getElementById(`spv_${targetUserId}`).value || null;
       const pwdBaru = document.getElementById(`resetPwd_${targetUserId}`).value;
       const status = document.getElementById('status');
@@ -1446,6 +1679,7 @@ async function superAdminRegisterUser() {
       const { error } = await supabaseClient.from('profiles').update({
         role: roleBaru,
         unit_kerja: unitBaru,
+        saldo_cuti_kompensasi: saldoBaru,
         supervisor_id: spvBaru
       }).eq('id', targetUserId);
 
@@ -1466,28 +1700,12 @@ async function superAdminRegisterUser() {
       await muatMenuSuperAdmin();
     }
 
-    async function toggleStatusAktifUser(targetUserId, nonaktifkan) {
-      const status = document.getElementById('status');
-      status.innerText = "Mengubah status akun...";
-
-      const { error } = await supabaseClient.from('profiles').update({
-        status_aktif: !nonaktifkan
-      }).eq('id', targetUserId);
-
-      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else {
-        status.innerHTML = `<span style='color:green'>Akun berhasil di-${nonaktifkan?'nonaktifkan':'aktifkan'}!</span>`;
-        await muatMenuSuperAdmin();
-      }
-    }
-
-async function hapusUserPermanen(targetUserId, namaUser) {
+    async function hapusUserPermanen(targetUserId, namaUser) {
       if (!confirm(`Apakah Anda yakin ingin MELAKUKAN OFFBOARD / HAPUS PERMANEN pada akun ${namaUser}?\n\nPengguna tidak akan bisa login lagi dan email dapat didaftarkan ulang.`)) return;
 
       const status = document.getElementById('status');
       status.innerText = "Proses Offboard (Menghapus akun)...";
 
-      // 1. Hapus riwayat di tabel database
       await supabaseClient.from('attendances').delete().eq('user_id', targetUserId);
       await supabaseClient.from('requests').delete().eq('user_id', targetUserId);
       const { error: profErr } = await supabaseClient.from('profiles').delete().eq('id', targetUserId);
@@ -1496,7 +1714,6 @@ async function hapusUserPermanen(targetUserId, namaUser) {
         return status.innerHTML = `<span style='color:red'>Gagal hapus profil: ${profErr.message}</span>`;
       }
 
-      // 2. Hapus user dari Supabase Auth agar email bisa didaftarkan ulang tanpa error "User already registered"
       const { error: authErr } = await supabaseClient.auth.admin.deleteUser(targetUserId);
 
       if (authErr) {
@@ -1514,8 +1731,8 @@ async function hapusUserPermanen(targetUserId, namaUser) {
       
       if (data && data.length > 0) {
         list.innerHTML = data.map(r => {
-          const namaRekan = r.nama_lengkap || r.full_name || 'Pemagang';
-          const roleRekan = (r.role || 'magang').toUpperCase();
+          const namaRekan = r.nama_lengkap || r.full_name || 'Pegawai';
+          const roleRekan = formatRoleLabel(r.role);
           const unitRekan = r.unit_kerja || 'Umum';
           const phoneRekan = r.phone_number || '-';
           const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "") 
