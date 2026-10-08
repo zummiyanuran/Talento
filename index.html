@@ -1424,8 +1424,8 @@
 
           const sChoice = reqData.shift_choice || '';
 
-          // 1. Pengurangan Saldo Cuti Tahunan (CT / CTAHUNAN)
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CTAHUNAN') || sChoice === 'CT' || sChoice.includes('Cuti Tahunan'))) {
+          // 1. Pengurangan Saldo Cuti Tahunan (CT)
+          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CT') || sChoice === 'CT' || sChoice.includes('Cuti Tahunan'))) {
             const newSaldoT = Math.max(0, currentSaldoTahunan - 1);
             await supabaseClient.from('profiles').update({ saldo_cuti_tahunan: newSaldoT }).eq('id', targetUserId);
           }
@@ -1937,7 +1937,7 @@ async function exportLemburToExcel() {
           unit_kerja: unit,
           supervisor_id: spvId,
           saldo_cuti_kompensasi: 0,
-          saldo_cuti_tahunan: 12
+          saldo_cuti_tahunan: 0
         });
 
         if (profErr) {
