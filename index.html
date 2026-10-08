@@ -100,8 +100,8 @@
         <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
         
         <div class="saldo-badge-box">
-          <div class="saldo-badge" id="saldoCutiDisplay">🎁 Cuti Kompensasi: 0 Hari</div>
-          <div class="saldo-badge" id="saldoTahunanDisplay" style="background:#e0f2fe; border-color:#bae6fd; color:#0369a1;">📅 Cuti Tahunan: 0 Hari</div>
+          <div class="saldo-badge" id="saldoTahunanDisplay" style="background:#e0f2fe; border-color:#bae6fd; color:#0369a1;">📅 Cuti Tahunan (CT): 0 Hari</div>
+          <div class="saldo-badge" id="saldoCutiDisplay">🎁 Cuti Kompensasi (CKOMP): 0 Hari</div>
         </div>
 
         <button id="btnMasuk" onclick="catatPresensi('Masuk')">Clockin</button>
@@ -161,8 +161,8 @@
         
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Jenis Cuti:</label>
         <select id="cutiTypeSelect">
-          <option value="CT" id="opt_CT">CT (Cuti Kompensasi)</option>
-          <option value="CTAHUNAN" id="opt_CTAHUNAN">CTAHUNAN (Cuti Tahunan)</option>
+          <option value="CT" id="opt_CT">CT (Cuti Tahunan)</option>
+          <option value="CKOMP" id="opt_CKOMP">CKOMP (Cuti Kompensasi)</option>
           <option value="CKAG">CKAG (Cuti Keagamaan)</option>
           <option value="CKAP">CKAP (Cuti Karena Alasan Penting)</option>
           <option value="SDSD">SDSD (Sakit Dengan Surat Dokter)</option>
@@ -321,8 +321,8 @@
           <div><b>Jabatan:</b> <span id="profileRoleText">-</span></div>
           <div><b>Unit Kerja:</b> <span id="profileUnitText">-</span></div>
           <div><b>Atasan Direct:</b> <span id="profileSupervisorText">-</span></div>
-          <div><b>Saldo Cuti Kompensasi:</b> <span id="profileSaldoText">0 Hari</span></div>
-          <div><b>Saldo Cuti Tahunan:</b> <span id="profileSaldoTahunanText">0 Hari</span></div>
+          <div><b>Saldo Cuti Tahunan (CT):</b> <span id="profileSaldoTahunanText">0 Hari</span></div>
+          <div><b>Saldo Cuti Kompensasi (CKOMP):</b> <span id="profileSaldoText">0 Hari</span></div>
         </div>
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Pilih Foto Profil:</label>
@@ -855,7 +855,7 @@
         const roleText = formatRoleLabel(role);
         const unit = data.unit_kerja || 'Umum';
         const phone = data.phone_number || '';
-        const saldoCuti = data.saldo_cuti_kompensasi || 0;
+        const saldoCutiKompensasi = data.saldo_cuti_kompensasi || 0;
         const saldoTahunan = data.saldo_cuti_tahunan !== undefined ? data.saldo_cuti_tahunan : 12;
 
         document.getElementById('userName').innerText = nama;
@@ -865,32 +865,32 @@
         document.getElementById('profileEmailText').innerText = currentUser.email;
         document.getElementById('profileRoleText').innerText = roleText;
         document.getElementById('profileUnitText').innerText = unit;
-        document.getElementById('profileSaldoText').innerText = `${saldoCuti} Hari`;
+        document.getElementById('profileSaldoText').innerText = `${saldoCutiKompensasi} Hari`;
         document.getElementById('profileSaldoTahunanText').innerText = `${saldoTahunan} Hari`;
-        document.getElementById('saldoCutiDisplay').innerText = `🎁 Cuti Kompensasi: ${saldoCuti} Hari`;
-        document.getElementById('saldoTahunanDisplay').innerText = `📅 Cuti Tahunan: ${saldoTahunan} Hari`;
+        document.getElementById('saldoCutiDisplay').innerText = `🎁 Cuti Kompensasi (CKOMP): ${saldoCutiKompensasi} Hari`;
+        document.getElementById('saldoTahunanDisplay').innerText = `📅 Cuti Tahunan (CT): ${saldoTahunan} Hari`;
 
         // KONTROL OPSI DROPDOWN CUTI BERDASARKAN SALDO
         const optCT = document.getElementById('opt_CT');
-        const optCTahun = document.getElementById('opt_CTAHUNAN');
+        const optCKomp = document.getElementById('opt_CKOMP');
         
         if (optCT) {
-          if (saldoCuti <= 0) {
+          if (saldoTahunan <= 0) {
             optCT.disabled = true;
-            optCT.innerText = "CT (Cuti Kompensasi) - Saldo 0 Hari";
+            optCT.innerText = "CT (Cuti Tahunan) - Saldo 0 Hari";
           } else {
             optCT.disabled = false;
-            optCT.innerText = `CT (Cuti Kompensasi) - sisa ${saldoCuti} hari`;
+            optCT.innerText = `CT (Cuti Tahunan) - sisa ${saldoTahunan} hari`;
           }
         }
 
-        if (optCTahun) {
-          if (saldoTahunan <= 0) {
-            optCTahun.disabled = true;
-            optCTahun.innerText = "CTAHUNAN (Cuti Tahunan) - Saldo 0 Hari";
+        if (optCKomp) {
+          if (saldoCutiKompensasi <= 0) {
+            optCKomp.disabled = true;
+            optCKomp.innerText = "CKOMP (Cuti Kompensasi) - Saldo 0 Hari";
           } else {
-            optCTahun.disabled = false;
-            optCTahun.innerText = `CTAHUNAN (Cuti Tahunan) - sisa ${saldoTahunan} hari`;
+            optCKomp.disabled = false;
+            optCKomp.innerText = `CKOMP (Cuti Kompensasi) - sisa ${saldoCutiKompensasi} hari`;
           }
         }
 
@@ -996,15 +996,15 @@
         shiftChoice = document.getElementById('cutiTypeSelect').value;
 
         if (shiftChoice === 'CT') {
-          const saldo = userProfile?.saldo_cuti_kompensasi || 0;
-          if (saldo < 1) {
-            return status.innerHTML = "<span style='color:red'>Saldo Cuti Kompensasi Anda 0 Hari. Pengajuan tidak dapat dikirim!</span>";
-          }
-        }
-        if (shiftChoice === 'CTAHUNAN') {
           const saldoT = userProfile?.saldo_cuti_tahunan !== undefined ? userProfile.saldo_cuti_tahunan : 12;
           if (saldoT < 1) {
             return status.innerHTML = "<span style='color:red'>Saldo Cuti Tahunan Anda 0 Hari. Pengajuan tidak dapat dikirim!</span>";
+          }
+        }
+        if (shiftChoice === 'CKOMP') {
+          const saldoK = userProfile?.saldo_cuti_kompensasi || 0;
+          if (saldoK < 1) {
+            return status.innerHTML = "<span style='color:red'>Saldo Cuti Kompensasi Anda 0 Hari. Pengajuan tidak dapat dikirim!</span>";
           }
         }
       } else if (jenisType === 'lembur') {
@@ -1314,25 +1314,27 @@
         if (statusBaru === 'Disetujui') {
           const targetUserId = reqData.user_id;
           const { data: targetProfile } = await supabaseClient.from('profiles').select('*').eq('id', targetUserId).single();
-          let currentSaldo = targetProfile?.saldo_cuti_kompensasi || 0;
+          let currentSaldoKompensasi = targetProfile?.saldo_cuti_kompensasi || 0;
           let currentSaldoTahunan = targetProfile?.saldo_cuti_tahunan !== undefined ? targetProfile.saldo_cuti_tahunan : 12;
 
-          // 1. Pengurangan Saldo CT
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && reqData.shift_choice === 'CT') {
-            const newSaldo = Math.max(0, currentSaldo - 1);
-            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldo }).eq('id', targetUserId);
-          }
+          const sChoice = reqData.shift_choice || '';
 
-          // 2. Pengurangan Saldo Cuti Tahunan
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && reqData.shift_choice === 'CTAHUNAN') {
+          // 1. Pengurangan Saldo Cuti Tahunan (CT / CTAHUNAN)
+          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CTAHUNAN') || sChoice === 'CT' || sChoice.includes('Cuti Tahunan'))) {
             const newSaldoT = Math.max(0, currentSaldoTahunan - 1);
             await supabaseClient.from('profiles').update({ saldo_cuti_tahunan: newSaldoT }).eq('id', targetUserId);
           }
 
-          // 3. Penambahan Saldo CT saat Lembur Kompensasi Disetujui
-          if (reqData.type === 'lembur' && reqData.shift_choice && reqData.shift_choice.includes('Saldo Cuti Kompensasi')) {
-            const newSaldo = currentSaldo + 1;
-            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldo }).eq('id', targetUserId);
+          // 2. Pengurangan Saldo Cuti Kompensasi (CKOMP)
+          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CKOMP') || sChoice.includes('Cuti Kompensasi'))) {
+            const newSaldoK = Math.max(0, currentSaldoKompensasi - 1);
+            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
+          }
+
+          // 3. Penambahan Saldo Cuti Kompensasi saat Lembur Disetujui
+          if (reqData.type === 'lembur' && sChoice.includes('Saldo Cuti Kompensasi')) {
+            const newSaldoK = currentSaldoKompensasi + 1;
+            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
           }
         }
       }
@@ -1403,12 +1405,12 @@
 
               <div style="display:flex; gap:6px; margin-top:4px;">
                 <div style="flex:1;">
-                  <label style="font-size:10px; display:block;">Cuti Kompensasi (Hari):</label>
-                  <input type="number" id="saldo_${u.id}" value="${u.saldo_cuti_kompensasi || 0}" min="0" style="padding:2px; font-size:10px;">
+                  <label style="font-size:10px; display:block;">Cuti Tahunan (CT):</label>
+                  <input type="number" id="saldoTahunan_${u.id}" value="${u.saldo_cuti_tahunan !== undefined ? u.saldo_cuti_tahunan : 12}" min="0" style="padding:2px; font-size:10px;">
                 </div>
                 <div style="flex:1;">
-                  <label style="font-size:10px; display:block;">Cuti Tahunan (Hari):</label>
-                  <input type="number" id="saldoTahunan_${u.id}" value="${u.saldo_cuti_tahunan !== undefined ? u.saldo_cuti_tahunan : 12}" min="0" style="padding:2px; font-size:10px;">
+                  <label style="font-size:10px; display:block;">Cuti Kompensasi (CKOMP):</label>
+                  <input type="number" id="saldo_${u.id}" value="${u.saldo_cuti_kompensasi || 0}" min="0" style="padding:2px; font-size:10px;">
                 </div>
               </div>
 
