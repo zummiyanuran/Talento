@@ -548,35 +548,41 @@
       location.reload();
     }
 
-    function switchTab(tabName) {
-      ['absen', 'shift', 'ajukanAbsen', 'cuti', 'lembur', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
-        const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
-        const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
-        if (el) el.classList.add('hidden');
-        if (btn) btn.classList.remove('active');
-      });
+function switchTab(tabName) {
+  // Samakan daftar ID dengan elemen HTML yang ada
+  ['absen', 'shift', 'ajukanAbsen', 'cuti', 'lembur', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
+    if (el) el.classList.add('hidden');
+    if (btn) btn.classList.remove('active');
+  });
 
-      const activeEl = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
-      const activeBtn = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn');
-      if (activeEl) activeEl.classList.remove('hidden');
-      if (activeBtn) activeBtn.classList.add('active');
+  // Pemetaan khusus jika nama tab beda dengan ID HTML
+  let targetId = tabName;
+  if (tabName === 'ajukanPresensi') targetId = 'ajukanAbsen';
 
-      if (tabName === 'absen') { 
-        muatUserRequests().then(() => {
-          muatRiwayat();
-          muatShiftHariIni();
-        }); 
-      }
-      if (tabName === 'rekan') muatRekan();
-      if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
-      if (tabName === 'ajukanAbsen') muatRiwayatClaim();
-      if (tabName === 'cuti') muatRiwayatCuti();
-      if (tabName === 'lembur') { evaluasiOpsiLembur(); muatRiwayatLembur(); }
-      if (tabName === 'tukarShift') muatRiwayatShift();
-      if (tabName === 'approve') muatDaftarPersetujuan();
-      if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
-    }
+  const activeEl = document.getElementById('tab' + targetId.charAt(0).toUpperCase() + targetId.slice(1));
+  const activeBtn = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn');
+  
+  if (activeEl) activeEl.classList.remove('hidden');
+  if (activeBtn) activeBtn.classList.add('active');
 
+  // Muat data riwayat saat tab aktif
+  if (tabName === 'absen') { 
+    muatUserRequests().then(() => {
+      muatRiwayat();
+      muatShiftHariIni();
+    }); 
+  }
+  if (tabName === 'rekan') muatRekan();
+  if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
+  if (tabName === 'ajukanPresensi' || tabName === 'ajukanAbsen') muatRiwayatClaim();
+  if (tabName === 'cuti') muatRiwayatCuti();
+  if (tabName === 'lembur') { evaluasiOpsiLembur(); muatRiwayatLembur(); }
+  if (tabName === 'tukarShift') muatRiwayatShift();
+  if (tabName === 'approve') muatDaftarPersetujuan();
+  if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
+}
     function catatPresensi(tipeAbsen) {
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
