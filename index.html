@@ -940,7 +940,7 @@
         const unit = data.unit_kerja || 'Umum';
         const phone = data.phone_number || '';
         const saldoCutiKompensasi = data.saldo_cuti_kompensasi || 0;
-        const saldoTahunan = data.saldo_cuti_tahunan !== undefined ? data.saldo_cuti_tahunan : 12;
+        const saldoTahunan = data.saldo_cuti_tahunan !== undefined ? data.saldo_cuti_tahunan : 0;
 
         document.getElementById('userName').innerText = nama;
         document.getElementById('userRoleBadge').innerText = `Jabatan: ${roleText}`;
@@ -1080,7 +1080,7 @@
         shiftChoice = document.getElementById('cutiTypeSelect').value;
 
         if (shiftChoice === 'CT') {
-          const saldoT = userProfile?.saldo_cuti_tahunan !== undefined ? userProfile.saldo_cuti_tahunan : 12;
+          const saldoT = userProfile?.saldo_cuti_tahunan !== undefined ? userProfile.saldo_cuti_tahunan : 0;
           if (saldoT < 1) {
             return status.innerHTML = "<span style='color:red'>Saldo Cuti Tahunan Anda 0 Hari. Pengajuan tidak dapat dikirim!</span>";
           }
@@ -1420,7 +1420,7 @@
           const targetUserId = reqData.user_id;
           const { data: targetProfile } = await supabaseClient.from('profiles').select('*').eq('id', targetUserId).single();
           let currentSaldoKompensasi = targetProfile?.saldo_cuti_kompensasi || 0;
-          let currentSaldoTahunan = targetProfile?.saldo_cuti_tahunan !== undefined ? targetProfile.saldo_cuti_tahunan : 12;
+          let currentSaldoTahunan = targetProfile?.saldo_cuti_tahunan !== undefined ? targetProfile.saldo_cuti_tahunan : 0;
 
           const sChoice = reqData.shift_choice || '';
 
@@ -1511,7 +1511,7 @@
               <div style="display:flex; gap:6px; margin-top:4px;">
                 <div style="flex:1;">
                   <label style="font-size:10px; display:block;">Cuti Tahunan (CT):</label>
-                  <input type="number" id="saldoTahunan_${u.id}" value="${u.saldo_cuti_tahunan !== undefined ? u.saldo_cuti_tahunan : 12}" min="0" style="padding:2px; font-size:10px;">
+                  <input type="number" id="saldoTahunan_${u.id}" value="${u.saldo_cuti_tahunan !== undefined ? u.saldo_cuti_tahunan : 0}" min="0" style="padding:2px; font-size:10px;">
                 </div>
                 <div style="flex:1;">
                   <label style="font-size:10px; display:block;">Cuti Kompensasi (CKOMP):</label>
