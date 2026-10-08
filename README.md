@@ -1,2 +1,2 @@
-# presensimagang
-Aplikasi HRIS presensi berbasis web dengan GPS
+# TALENTO
+Aplikasi HRIS Komnas Perempuan
