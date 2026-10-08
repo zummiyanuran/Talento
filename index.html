@@ -56,6 +56,8 @@
     .filter-month-box input, .filter-month-box select { width: auto; margin: 0; padding: 4px 8px; font-size: 12px; }
     .time-container { display: flex; gap: 8px; text-align: left; }
     .time-container div { flex: 1; }
+    .lembur-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 6px; margin: 6px 0; text-align: left; }
+    .lembur-box-title { font-size: 11px; font-weight: bold; color: #1e293b; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -189,23 +191,62 @@
       <div id="tabLembur" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Lembur</h4>
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Lembur:</label>
-        <input type="date" id="lemburReqDate">
+        <input type="date" id="lemburReqDate" onchange="evaluasiOpsiLembur()">
 
-        <div class="time-container">
-          <div>
-            <label style="font-size:11px; display:block; margin-top:4px;">Jam Mulai Lembur:</label>
-            <input type="time" id="lemburTimeStart" value="09:00">
+        <div id="infoStatusHariLembur" style="font-size:11px; font-weight:bold; color:#2563eb; text-align:left; margin-bottom:4px;">Hari Kerja (Senin–Jumat)</div>
+
+        <!-- FORM JAM LEMBUR HARI KERJA -->
+        <div id="boxLemburHariKerja">
+          <div class="lembur-box">
+            <div class="lembur-box-title">1. Lembur Sebelum Shift (Pagi)</div>
+            <div class="time-container">
+              <div>
+                <label style="font-size:10px; display:block;">Mulai:</label>
+                <input type="time" id="lemburPreStart" value="07:00">
+              </div>
+              <div>
+                <label style="font-size:10px; display:block;">Selesai:</label>
+                <input type="time" id="lemburPreEnd" value="09:00">
+              </div>
+            </div>
           </div>
-          <div>
-            <label style="font-size:11px; display:block; margin-top:4px;">Jam Selesai Lembur:</label>
-            <input type="time" id="lemburTimeEnd" value="17:00">
+
+          <div class="lembur-box">
+            <div class="lembur-box-title">2. Lembur Setelah Shift (Sore / Malam)</div>
+            <div class="time-container">
+              <div>
+                <label style="font-size:10px; display:block;">Mulai:</label>
+                <input type="time" id="lemburPostStart" value="17:00">
+              </div>
+              <div>
+                <label style="font-size:10px; display:block;">Selesai:</label>
+                <input type="time" id="lemburPostEnd" value="19:00">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FORM JAM LEMBUR HARI LIBUR / WEEKEND -->
+        <div id="boxLemburHariLibur" class="hidden">
+          <div class="lembur-box">
+            <div class="lembur-box-title">Jam Lembur Hari Libur / Akhir Pekan</div>
+            <div class="time-container">
+              <div>
+                <label style="font-size:10px; display:block;">Mulai:</label>
+                <input type="time" id="lemburLiburStart" value="09:00">
+              </div>
+              <div>
+                <label style="font-size:10px; display:block;">Selesai:</label>
+                <input type="time" id="lemburLiburEnd" value="17:00">
+              </div>
+            </div>
           </div>
         </div>
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Opsi Kompensasi Lembur:</label>
         <select id="lemburKompensasiSelect">
-          <option value="Upah Lembur">Upah Lembur</option>
-          <option value="Saldo Cuti Kompensasi">Saldo Cuti Kompensasi (Min 8 Jam di Hari Libur = +1 Hari)</option>
+          <option value="Upah Lembur" id="optKompUpah">Upah Lembur</option>
+          <option value="Saldo Cuti Kompensasi" id="optKompCKomp">Saldo Cuti Kompensasi (CKOMP) (Min 8 Jam di Hari Libur = +1 Hari)</option>
         </select>
 
         <textarea id="lemburReqDesc" placeholder="Tuliskan uraian tugas/alasan lembur..." rows="3"></textarea>
@@ -418,6 +459,49 @@
       }
     }
 
+    async function evaluasiOpsiLembur() {
+      const tglVal = document.getElementById('lemburReqDate').value;
+      if (!tglVal) return;
+
+      const d = new Date(tglVal + 'T00:00:00');
+      const dayOfWeek = d.getDay();
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+      let isHariLibur = false;
+      try {
+        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${d.getMonth() + 1}&year=${d.getFullYear()}`);
+        const dataLibur = await res.json();
+        if (Array.isArray(dataLibur)) {
+          isHariLibur = dataLibur.some(l => l.is_holiday && l.holiday_date === tglVal);
+        }
+      } catch (e) { console.log("Gagal memuat libur", e); }
+
+      const boxHariKerja = document.getElementById('boxLemburHariKerja');
+      const boxHariLibur = document.getElementById('boxLemburHariLibur');
+      const optCKomp = document.getElementById('optKompCKomp');
+      const selectKomp = document.getElementById('lemburKompensasiSelect');
+      const infoStatus = document.getElementById('infoStatusHariLembur');
+
+      if (isWeekend || isHariLibur) {
+        infoStatus.innerText = `Hari Libur / Akhir Pekan (${isHariLibur ? 'Libur Nasional' : 'Weekend'})`;
+        infoStatus.style.color = "#dc2626";
+        boxHariKerja.classList.add('hidden');
+        boxHariLibur.classList.remove('hidden');
+        
+        optCKomp.disabled = false;
+        optCKomp.innerText = "Saldo Cuti Kompensasi (CKOMP) (Min 8 Jam di Hari Libur = +1 Hari)";
+      } else {
+        infoStatus.innerText = "Hari Kerja (Senin–Jumat)";
+        infoStatus.style.color = "#2563eb";
+        boxHariKerja.classList.remove('hidden');
+        boxHariLibur.classList.add('hidden');
+        
+        optCKomp.disabled = true;
+        optCKomp.innerText = "Saldo Cuti Kompensasi (CKOMP) - Hanya berlaku untuk Lembur Hari Libur";
+        selectKomp.value = "Upah Lembur";
+      }
+    }
+
     function tampilkanTanggalHariIni() {
       const opsi = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       const hariIni = new Date().toLocaleDateString('id-ID', opsi);
@@ -427,6 +511,7 @@
       document.getElementById('claimReqDate').value = formatTanggalLokal(new Date());
       document.getElementById('lemburReqDate').value = formatTanggalLokal(new Date());
       inisialisasiDefaultBulan();
+      evaluasiOpsiLembur();
     }
 
     async function checkAuth() {
@@ -487,7 +572,7 @@
       if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
       if (tabName === 'ajukanAbsen') muatRiwayatClaim();
       if (tabName === 'cuti') muatRiwayatCuti();
-      if (tabName === 'lembur') muatRiwayatLembur();
+      if (tabName === 'lembur') { evaluasiOpsiLembur(); muatRiwayatLembur(); }
       if (tabName === 'tukarShift') muatRiwayatShift();
       if (tabName === 'approve') muatDaftarPersetujuan();
       if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
@@ -1009,12 +1094,42 @@
         }
       } else if (jenisType === 'lembur') {
         selectedDate = document.getElementById('lemburReqDate').value;
-        const timeStart = document.getElementById('lemburTimeStart').value || '09:00';
-        const timeEnd = document.getElementById('lemburTimeEnd').value || '17:00';
-        const opsiKompensasi = document.getElementById('lemburKompensasiSelect').value;
         desc = document.getElementById('lemburReqDesc').value.trim();
-        
-        shiftChoice = `${timeStart} - ${timeEnd} | Kompensasi: ${opsiKompensasi}`;
+        const opsiKompensasi = document.getElementById('lemburKompensasiSelect').value;
+
+        const d = new Date(selectedDate + 'T00:00:00');
+        const dayOfWeek = d.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+        let isHariLibur = false;
+        try {
+          const res = await fetch(`https://dayoffapi.vercel.app/api?month=${d.getMonth() + 1}&year=${d.getFullYear()}`);
+          const dataLibur = await res.json();
+          if (Array.isArray(dataLibur)) {
+            isHariLibur = dataLibur.some(l => l.is_holiday && l.holiday_date === selectedDate);
+          }
+        } catch (e) { console.log("Gagal memuat libur", e); }
+
+        if (isWeekend || isHariLibur) {
+          const tStart = document.getElementById('lemburLiburStart').value || '09:00';
+          const tEnd = document.getElementById('lemburLiburEnd').value || '17:00';
+          shiftChoice = `Hari Libur: ${tStart} - ${tEnd} | Kompensasi: ${opsiKompensasi}`;
+        } else {
+          const preStart = document.getElementById('lemburPreStart').value;
+          const preEnd = document.getElementById('lemburPreEnd').value;
+          const postStart = document.getElementById('lemburPostStart').value;
+          const postEnd = document.getElementById('lemburPostEnd').value;
+
+          let detailWaktuArr = [];
+          if (preStart && preEnd) detailWaktuArr.push(`Sebelum Shift (${preStart} - ${preEnd})`);
+          if (postStart && postEnd) detailWaktuArr.push(`Setelah Shift (${postStart} - ${postEnd})`);
+
+          if (detailWaktuArr.length === 0) {
+            return status.innerHTML = "<span style='color:red'>Isi setidaknya salah satu jam lembur (sebelum/setelah shift)!</span>";
+          }
+
+          shiftChoice = `Hari Kerja: ${detailWaktuArr.join(' & ')} | Kompensasi: Upah Lembur`;
+        }
       } else if (jenisType === 'shift') {
         selectedDate = document.getElementById('shiftReqDate').value;
         desc = document.getElementById('shiftReqDesc').value.trim();
@@ -1295,15 +1410,6 @@
       }
     }
 
-    async function hitungDurasiJam(jamAwal, jamAkhir) {
-      if (!jamAwal || !jamAkhir) return 0;
-      const [h1, m1] = jamAwal.split(':').map(Number);
-      const [h2, m2] = jamAkhir.split(':').map(Number);
-      let selisihMenit = (h2 * 60 + m2) - (h1 * 60 + m1);
-      if (selisihMenit < 0) selisihMenit += 24 * 60;
-      return selisihMenit / 60;
-    }
-
     async function updateStatusIzin(id, statusBaru) {
       const statusDiv = document.getElementById('status');
       statusDiv.innerText = `Memproses status...`;
@@ -1331,7 +1437,7 @@
             await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
           }
 
-          // 3. Penambahan Saldo Cuti Kompensasi saat Lembur Disetujui
+          // 3. Penambahan Saldo Cuti Kompensasi saat Lembur Hari Libur Disetujui
           if (reqData.type === 'lembur' && sChoice.includes('Saldo Cuti Kompensasi')) {
             const newSaldoK = currentSaldoKompensasi + 1;
             await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
@@ -1651,49 +1757,154 @@
       doc.save(`Rekap_Presensi_Komnas_Perempuan_${Date.now()}.pdf`);
     }
 
-    function exportLemburToExcel() {
-      const dataLembur = dataExportSuperAdmin.filter(item => item.lembur && item.lembur !== '-');
-      if (dataLembur.length === 0) return alert("Tidak ada data pengajuan lembur pada periode/filter ini!");
+async function exportLemburToExcel() {
+  const filterUser = document.getElementById('adminFilterMagang').value;
+  const filterBulanVal = document.getElementById('adminFilterBulan').value;
 
-      const dataFormatted = dataLembur.map(item => ({
-        "Tanggal": item.tanggal,
-        "Nama Pegawai": item.nama,
-        "Jabatan / Tingkatan": item.role,
-        "Unit Kerja": item.unit,
-        "Detail Waktu & Kompensasi": item.lembur,
-        "Uraian Tugas / Alasan Lembur": item.lemburDetail,
-        "Status Persetujuan": item.lemburStatus
-      }));
+  let tahun, bulan;
+  if (filterBulanVal) {
+    const parts = filterBulanVal.split('-');
+    tahun = parseInt(parts[0]);
+    bulan = parseInt(parts[1]) - 1;
+  } else {
+    const skrg = new Date();
+    tahun = skrg.getFullYear();
+    bulan = skrg.getMonth();
+  }
 
-      const ws = XLSX.utils.json_to_sheet(dataFormatted);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Rekap Lembur");
-      XLSX.writeFile(wb, `Rekap_Lembur_Komnas_Perempuan_${Date.now()}.xlsx`);
+  // Fetch data libur nasional
+  let liburNasional = [];
+  try {
+    const res = await fetch(`https://dayoffapi.vercel.app/api?month=${bulan + 1}&year=${tahun}`);
+    const dataLibur = await res.json();
+    if (Array.isArray(dataLibur)) {
+      liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
+    }
+  } catch (e) { console.log("Gagal memuat libur", e); }
+
+  const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+  const usersMap = {};
+  if (allUsers) allUsers.forEach(u => usersMap[u.id] = u);
+
+  const { data: requests } = await supabaseClient.from('requests').select('*').eq('type', 'lembur').eq('status', 'Disetujui');
+  const { data: attendances } = await supabaseClient.from('attendances').select('*');
+
+  if (!requests || requests.length === 0) {
+    return alert("Tidak ada data lembur yang disetujui pada sistem!");
+  }
+
+  const bersihkanTanggal = (str) => {
+    if (!str) return '';
+    if (str.includes('T')) return str.split('T')[0];
+    return str.trim();
+  };
+
+  // Persiapkan data baris Excel
+  const rows = [
+    ['', '', '', '', '', '', 'Waktu Lembur', '', '', '', 'Waktu Kerja', ''],
+    ['No', 'Nama', 'Unit Kerja', 'Tanggal Lembur', 'Tujuan Lembur', 'Jam lembur yang diajukan', 'Mulai', 'Selesai', 'Jumlah jam Lembur', 'Jumlah Jam Lembur yang Dapat Diklaim', 'Mulai', 'Selesai']
+  ];
+
+  let no = 1;
+
+  requests.forEach(req => {
+    const uId = req.user_id;
+    if (filterUser !== 'ALL' && uId !== filterUser) return;
+
+    const tglReq = bersihkanTanggal(req.date);
+    if (!tglReq) return;
+
+    const d = new Date(tglReq + 'T00:00:00');
+    if (d.getFullYear() !== tahun || d.getMonth() !== bulan) return;
+
+    const mUser = usersMap[uId];
+    const nama = mUser?.nama_lengkap || mUser?.full_name || 'Pegawai';
+    const unit = mUser?.unit_kerja || 'Umum';
+
+    const dayOfWeek = d.getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    const isHariLibur = liburNasional.includes(tglReq);
+    const statusLibur = (isWeekend || isHariLibur);
+
+    // Parse Waktu Lembur dari shift_choice
+    let jamMulaiLembur = '-';
+    let jamSelesaiLembur = '-';
+    let shiftChoice = req.shift_choice || '';
+
+    const timeMatches = shiftChoice.match(/(\d{2}:\d{2})/g);
+    if (timeMatches && timeMatches.length >= 2) {
+      jamMulaiLembur = timeMatches[0];
+      jamSelesaiLembur = timeMatches[1];
     }
 
-    function exportLemburToPDF() {
-      const dataLembur = dataExportSuperAdmin.filter(item => item.lembur && item.lembur !== '-');
-      if (dataLembur.length === 0) return alert("Tidak ada data pengajuan lembur pada periode/filter ini!");
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('landscape');
-
-      doc.text("Rekap Data Lembur Pegawai - Komnas Perempuan", 14, 15);
-
-      const tableData = dataLembur.map(row => [
-        row.tanggal, row.nama, row.role, row.unit, row.lembur, row.lemburDetail, row.lemburStatus
-      ]);
-
-      doc.autoTable({
-        head: [['Tanggal', 'Nama Pegawai', 'Jabatan', 'Unit Kerja', 'Waktu & Kompensasi', 'Uraian Tugas', 'Status']],
-        body: tableData,
-        startY: 22,
-        styles: { fontSize: 7 }
-      });
-
-      doc.save(`Rekap_Lembur_Komnas_Perempuan_${Date.now()}.pdf`);
+    // Hitung total jam lembur
+    let totalJamLembur = 0;
+    if (jamMulaiLembur !== '-' && jamSelesaiLembur !== '-') {
+      const [h1, m1] = jamMulaiLembur.split(':').map(Number);
+      const [h2, m2] = jamSelesaiLembur.split(':').map(Number);
+      let selisihMenit = (h2 * 60 + m2) - (h1 * 60 + m1);
+      if (selisihMenit < 0) selisihMenit += 24 * 60;
+      totalJamLembur = Math.round(selisihMenit / 60);
     }
 
+    // Logika Batas Maksimal Klaim Jam Lembur
+    let jamDapatDiklaim = 0;
+    if (statusLibur) {
+      jamDapatDiklaim = Math.min(8, totalJamLembur); // Hari Libur maks 8 Jam
+    } else {
+      jamDapatDiklaim = Math.min(4, totalJamLembur); // Hari Kerja maks 4 Jam
+    }
+
+    // Ambil Data Presensi Waktu Kerja Real
+    const attHariIni = (attendances || []).filter(a => a.user_id === uId && bersihkanTanggal(a.created_at) === tglReq);
+    const absenMasuk = attHariIni.find(a => a.tipe === 'Masuk');
+    const absenPulang = attHariIni.find(a => a.tipe === 'Pulang');
+
+    const kerjaMulai = absenMasuk ? absenMasuk.jam_masuk : '-';
+    const kerjaSelesai = absenPulang ? absenPulang.jam_masuk : '-';
+
+    // Format Tanggal Display (Contoh: 28 Agustus 2026)
+    const tglDisplay = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Ekstrak Tujuan Lembur tanpa prefix tanggal
+    let tujuanLembur = req.description || '-';
+    if (tujuanLembur.includes(']')) {
+      tujuanLembur = tujuanLembur.split(']').slice(1).join(']').trim();
+    }
+
+    rows.push([
+      no++,
+      nama,
+      unit,
+      tglDisplay,
+      tujuanLembur,
+      `${totalJamLembur}:00:00`,
+      jamMulaiLembur,
+      jamSelesaiLembur,
+      `${totalJamLembur}:00:00`,
+      jamDapatDiklaim,
+      kerjaMulai,
+      kerjaSelesai
+    ]);
+  });
+
+  if (rows.length <= 2) {
+    return alert("Tidak ada data lembur untuk filter pegawai/bulan yang dipilih!");
+  }
+
+  // Buat Sheet XLSX
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Merge Header untuk "Waktu Lembur" dan "Waktu Kerja"
+  ws['!merges'] = [
+    { s: { r: 0, c: 6 }, e: { r: 0, c: 8 } },  // Merge Waktu Lembur (Mulai, Selesai, Jumlah Jam)
+    { s: { r: 0, c: 10 }, e: { r: 0, c: 11 } } // Merge Waktu Kerja (Mulai, Selesai)
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rekapitulasi Lembur");
+  XLSX.writeFile(wb, `Rekapitulasi_Lembur_Komnas_Perempuan_${Date.now()}.xlsx`);
+}
     async function superAdminRegisterUser() {
       const name = document.getElementById('adminNewName').value.trim();
       const email = document.getElementById('adminNewEmail').value.trim();
