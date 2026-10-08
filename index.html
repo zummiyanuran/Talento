@@ -1954,35 +1954,39 @@ async function exportLemburToExcel() {
       }
     }
 
-    async function simpanPengaturanUser(targetUserId) {
-      const roleBaru = document.getElementById(`role_${targetUserId}`).value;
-      const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
-      const saldoBaru = parseInt(document.getElementById(`saldo_${targetUserId}`).value) || 0;
-      const saldoTahunanBaru = parseInt(document.getElementById(`saldoTahunan_${targetUserId}`).value) || 0;
-      const spvBaru = document.getElementById(`spv_${targetUserId}`).value || null;
-      const pwdBaru = document.getElementById(`resetPwd_${targetUserId}`).value;
-      const status = document.getElementById('status');
+async function simpanPengaturanUser(targetUserId) {
+  const roleBaru = document.getElementById(`role_${targetUserId}`).value;
+  const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
+  const saldoBaru = parseInt(document.getElementById(`saldo_${targetUserId}`).value) || 0;
+  const saldoTahunanBaru = parseInt(document.getElementById(`saldoTahunan_${targetUserId}`).value) || 0;
+  const spvBaru = document.getElementById(`spv_${targetUserId}`).value || null;
+  const status = document.getElementById('status');
 
-      status.innerText = "Memperbarui data pengguna...";
+  status.innerText = "Memperbarui data pengguna...";
 
-      const { error } = await supabaseClient.from('profiles').update({
-        role: roleBaru,
-        unit_kerja: unitBaru,
-        saldo_cuti_kompensasi: saldoBaru,
-        saldo_cuti_tahunan: saldoTahunanBaru,
-        supervisor_id: spvBaru
-      }).eq('id', targetUserId);
+  // Payload update dasar
+  const updateData = {
+    role: roleBaru,
+    unit_kerja: unitBaru,
+    saldo_cuti_kompensasi: saldoBaru,
+    saldo_cuti_tahunan: saldoTahunanBaru,
+    supervisor_id: spvBaru
+  };
 
-      if (error) {
-        status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-        return;
-      }
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update(updateData)
+    .eq('id', targetUserId);
 
-      status.innerHTML = "<span style='color:green'>Data pengguna & Saldo Cuti berhasil diperbarui!</span>";
-      document.getElementById(`resetPwd_${targetUserId}`).value = '';
-      await muatMenuSuperAdmin();
-    }
+  if (error) {
+    status.innerHTML = `<span style='color:red'>Gagal Update: ${error.message}</span>`;
+    return;
+  }
 
+  status.innerHTML = "<span style='color:green'>Data pengguna & Saldo Cuti berhasil diperbarui!</span>";
+  document.getElementById(`resetPwd_${targetUserId}`).value = '';
+  await muatMenuSuperAdmin();
+}
     async function hapusUserPermanen(targetUserId, namaUser) {
       if (!confirm(`Apakah Anda yakin ingin MELAKUKAN OFFBOARD / HAPUS PERMANEN pada akun ${namaUser}?\n\nPengguna tidak akan bisa login lagi dan email dapat didaftarkan ulang.`)) return;
 
