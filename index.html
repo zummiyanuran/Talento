@@ -2014,13 +2014,18 @@ async function superAdminRegisterUser() {
 
   status.innerText = "Mendaftarkan akun baru...";
 
-  // 1. Buat akun di Auth Supabase
+  // 1. Cukup daftarkan ke Auth Supabase
+  // Data nama, phone, role, unit, & supervisor dikirim lewat user_metadata
   const { data: authData, error: authErr } = await supabaseClient.auth.signUp({
     email: email,
     password: password,
     options: {
       data: {
-        full_name: name
+        full_name: name,
+        phone_number: phone,
+        role: role,
+        unit_kerja: unit,
+        supervisor_id: spvId
       }
     }
   });
@@ -2029,40 +2034,17 @@ async function superAdminRegisterUser() {
     return status.innerHTML = `<span style='color:red'>Gagal Pendaftaran: ${authErr.message}</span>`;
   }
 
-  const newUserId = authData?.user?.id;
-
-  if (!newUserId) {
-    return status.innerHTML = "<span style='color:red'>Gagal mendapatkan ID pengguna baru dari Supabase Auth.</span>";
-  }
-
-  // 2. Berikan jeda singkat (300ms) agar ID terdaftar sempurna di auth.users
-  await new Promise(resolve => setTimeout(resolve, 300));
-
-  // 3. Simpan data profil ke tabel profiles
-  const { error: profErr } = await supabaseClient.from('profiles').upsert({
-    id: newUserId,
-    email: email,
-    nama_lengkap: name,
-    full_name: name,
-    phone_number: phone,
-    role: role,
-    unit_kerja: unit,
-    supervisor_id: spvId,
-    saldo_cuti_kompensasi: 0,
-    saldo_cuti_tahunan: 0
-  });
-
-  if (profErr) {
-    status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
-  } else {
-    status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${formatRoleLabel(role)}) berhasil dibuat!</span>`;
-    document.getElementById('adminNewName').value = '';
-    document.getElementById('adminNewEmail').value = '';
-    document.getElementById('adminNewPhone').value = '';
-    document.getElementById('adminNewPassword').value = '';
-    document.getElementById('adminNewUnit').value = '';
-    await muatMenuSuperAdmin();
-  }
+  // 2. Berhasil! Database Trigger di Supabase yang akan menangani pembuatan profil secara otomatis
+  status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${formatRoleLabel(role)}) berhasil dibuat!</span>`;
+  
+  // Clean up form
+  document.getElementById('adminNewName').value = '';
+  document.getElementById('adminNewEmail').value = '';
+  document.getElementById('adminNewPhone').value = '';
+  document.getElementById('adminNewPassword').value = '';
+  document.getElementById('adminNewUnit').value = '';
+  
+  await muatMenuSuperAdmin();
 }
     async function simpanPengaturanUser(targetUserId) {
       const roleBaru = document.getElementById(`role_${targetUserId}`).value;
