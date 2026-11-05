@@ -1357,13 +1357,12 @@
           if (userProfile?.role === 'superadmin') return true;
           
           const isDirectBawahan = pemohonProfile?.supervisor_id === currentUser.id;
-          const isSameUnit = pemohonProfile?.unit_kerja && userProfile?.unit_kerja && (pemohonProfile.unit_kerja === userProfile.unit_kerja);
-          
-          return isDirectBawahan || isSameUnit;
+          // Hanya atasan langsung pada approval line yang melihat pengajuan.
+          return isDirectBawahan;
         });
 
         if (filteredReqs.length === 0) {
-          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari anggota unit/bimbingan Anda.</small>";
+          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari bawahan langsung Anda.</small>";
           return;
         }
 
@@ -1407,7 +1406,35 @@
       const statusDiv = document.getElementById('status');
       statusDiv.innerText = `Memproses status...`;
 
-      const { data: reqData } = await supabaseClient.from('requests').select('*').eq('id', id).single();
+      // Verifikasi ulang kewenangan sebelum mengubah saldo, presensi, atau status.
+      if (!currentUser?.id || !['Disetujui', 'Ditolak'].includes(statusBaru)) {
+        statusDiv.innerText = 'Aksi persetujuan tidak valid.';
+        return;
+      }
+
+      const { data: reqData, error: reqError } = await supabaseClient
+        .from('requests').select('*').eq('id', id).single();
+      if (reqError || !reqData) {
+        statusDiv.innerText = 'Pengajuan tidak ditemukan atau tidak dapat diakses.';
+        return;
+      }
+      if (reqData.status !== 'Pending') {
+        statusDiv.innerText = 'Pengajuan ini sudah diproses.';
+        return;
+      }
+
+      const { data: approverProfile, error: approverError } = await supabaseClient
+        .from('profiles').select('role').eq('id', currentUser.id).single();
+      const { data: applicantProfile, error: applicantError } = await supabaseClient
+        .from('profiles').select('supervisor_id').eq('id', reqData.user_id).single();
+      if (approverError || applicantError || !approverProfile || !applicantProfile) {
+        statusDiv.innerText = 'Gagal memverifikasi approval line.';
+        return;
+      }
+      if (approverProfile.role !== 'superadmin' && applicantProfile.supervisor_id !== currentUser.id) {
+        statusDiv.innerText = 'Ditolak: pemohon tidak termasuk dalam approval line Anda.';
+        return;
+      }
 
       if (reqData) {
         if (statusBaru === 'Disetujui') {
@@ -1485,7 +1512,8 @@
       const { error } = await supabaseClient
         .from('requests')
         .update({ status: statusBaru })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('status', 'Pending');
 
       if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
