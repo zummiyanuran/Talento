@@ -309,6 +309,22 @@
 
         <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
 
+        <!-- JADWAL SHIFT SELURUH PENGGUNA -->
+        <h4 style="margin-bottom:8px; color:#2563eb;">📅 Jadwal Shift Seluruh Pengguna</h4>
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
+          <label for="adminShiftUser" style="font-size:11px; font-weight:bold;">Filter Pengguna:</label>
+          <select id="adminShiftUser" onchange="muatJadwalShiftSuperAdmin()">
+            <option value="ALL">-- Semua Pengguna --</option>
+          </select>
+          <label for="adminShiftMonth" style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Bulan & Tahun:</label>
+          <input id="adminShiftMonth" type="month" onchange="muatJadwalShiftSuperAdmin()">
+          <button class="btn-secondary" style="margin-top:8px;" onclick="muatJadwalShiftSuperAdmin()">🔄 Muat Ulang Jadwal</button>
+          <small style="display:block; margin-top:6px; color:#475569;">Shift standar FT 09.00–17.00; perubahan hanya berlaku setelah disetujui. Pengajuan tertunda ditandai terpisah.</small>
+        </div>
+        <div id="adminShiftSchedule" style="max-height:360px; overflow:auto; text-align:left;" aria-live="polite"></div>
+
+        <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
+
         <!-- MODUL KHUSUS SUPER ADMIN: EDIT/OVERWRITE PRESENSI PEGAWAI -->
         <h4 style="margin-bottom:8px; color:#2563eb;">🛠️ Edit / Injeksi Presensi Pegawai</h4>
         <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
@@ -472,6 +488,7 @@
       const mm = String(skrg.getMonth() + 1).padStart(2, '0');
       document.getElementById('monthPicker').value = `${yyyy}-${mm}`;
       document.getElementById('adminFilterBulan').value = `${yyyy}-${mm}`;
+      document.getElementById('adminShiftMonth').value = `${yyyy}-${mm}`;
     }
 
     function toggleTimeInputs() {
@@ -612,7 +629,7 @@
       if (tabName === 'lembur') { evaluasiOpsiLembur(); muatRiwayatLembur(); }
       if (tabName === 'tukarShift') muatRiwayatShift();
       if (tabName === 'approve') muatDaftarPersetujuan();
-      if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
+      if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); muatJadwalShiftSuperAdmin(); }
     }
 
     function catatPresensi(tipeAbsen) {
@@ -1543,6 +1560,10 @@
         const optionsHtml = allUsers.map(u => `<option value="${u.id}">${u.nama_lengkap || u.full_name} (${formatRoleLabel(u.role)})</option>`).join('');
         adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Pegawai --</option>' + optionsHtml;
         adminEditUserSelect.innerHTML = '<option value="">-- Pilih Pegawai --</option>' + optionsHtml;
+        const shiftSelect = document.getElementById('adminShiftUser');
+        const previousShiftUser = shiftSelect.value;
+        shiftSelect.innerHTML = '<option value="ALL">-- Semua Pengguna --</option>' + optionsHtml;
+        shiftSelect.value = [...shiftSelect.options].some(o => o.value === previousShiftUser) ? previousShiftUser : 'ALL';
       }
 
       const userListContainer = document.getElementById('adminUserList');
@@ -1705,6 +1726,78 @@
       });
     }
 
+    async function muatJadwalShiftSuperAdmin() {
+      const container = document.getElementById('adminShiftSchedule');
+      if (userProfile?.role !== 'superadmin') {
+        container.textContent = 'Fitur ini hanya tersedia bagi Super Admin.';
+        return;
+      }
+      const monthValue = document.getElementById('adminShiftMonth').value || formatTanggalLokal(new Date()).slice(0, 7);
+      const selectedUser = document.getElementById('adminShiftUser').value;
+      const [year, month] = monthValue.split('-').map(Number);
+      if (!year || !month || month < 1 || month > 12) {
+        container.textContent = 'Silakan pilih bulan yang valid.';
+        return;
+      }
+      container.textContent = 'Memuat jadwal shift pengguna...';
+      const startDate = monthValue + '-01';
+      const endDate = year + '-' + String(month + 1 > 12 ? 1 : month + 1).padStart(2, '0') + '-01';
+      const nextYear = month === 12 ? year + 1 : year;
+      const dateEnd = nextYear + endDate.slice(4);
+      const profilesQuery = supabaseClient.from('profiles').select('id,nama_lengkap,full_name,unit_kerja');
+      const requestsQuery = supabaseClient.from('requests').select('user_id,date,type,status,shift_choice,description,created_at')
+        .eq('type', 'shift').gte('date', startDate).lt('date', dateEnd);
+      const [profilesResult, requestsResult] = await Promise.all([profilesQuery, requestsQuery]);
+      if (profilesResult.error || requestsResult.error) {
+        container.textContent = 'Gagal memuat jadwal: ' + (profilesResult.error?.message || requestsResult.error?.message);
+        return;
+      }
+      let holidays = [];
+      try {
+        const resp = await fetch(`https://dayoffapi.vercel.app/api?month=${month}&year=${year}`);
+        if (resp.ok) {
+          const holidayData = await resp.json();
+          if (Array.isArray(holidayData)) holidays = holidayData.filter(item => item.is_holiday).map(item => item.holiday_date);
+        }
+      } catch (err) { console.warn('Data hari libur belum tersedia', err); }
+      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      const employees = (profilesResult.data || [])
+        .filter(p => selectedUser === 'ALL' || p.id === selectedUser)
+        .sort((a, b) => (a.nama_lengkap || a.full_name || '').localeCompare(b.nama_lengkap || b.full_name || '', 'id'));
+      const requests = requestsResult.data || [];
+      const reqMap = new Map();
+      requests.forEach(req => {
+        const key = req.user_id + '|' + String(req.date || '').slice(0, 10);
+        if (!reqMap.has(key)) reqMap.set(key, []);
+        reqMap.get(key).push(req);
+      });
+      const numberOfDays = new Date(year, month, 0).getDate();
+      let rows = '';
+      employees.forEach(employee => {
+        for (let day = 1; day <= numberOfDays; day++) {
+          const dt = new Date(year, month - 1, day);
+          const date = formatTanggalLokal(dt);
+          const off = dt.getDay() === 0 || dt.getDay() === 6 || holidays.includes(date);
+          const allRequests = reqMap.get(employee.id + '|' + date) || [];
+          const approved = allRequests.filter(req => req.status === 'Disetujui').sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''))[0];
+          const pending = allRequests.some(req => req.status === 'Pending');
+          const shift = approved ? (approved.shift_choice || 'Shift disetujui') : off ? 'Day Off (00.00 - 00.00)' : 'Shift FT (09.00 - 17.00)';
+          const status = approved ? 'Disetujui' : pending ? 'Menunggu persetujuan' : off ? 'Libur' : 'Shift standar';
+          rows += `<tr><td style="padding:6px; border-bottom:1px solid #e2e8f0; white-space:nowrap;">${escapeHtml(dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}))}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">${escapeHtml(employee.nama_lengkap || employee.full_name || 'Pengguna')}<small style="display:block;color:#64748b;">${escapeHtml(employee.unit_kerja || 'Umum')}</small></td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">${escapeHtml(shift)}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">${escapeHtml(status)}${pending && approved ? '<small style="display:block;color:#b45309;">Ada pengajuan baru tertunda</small>' : ''}</td></tr>`;
+        }
+      });
+      container.innerHTML = employees.length
+        ? `<small style="display:block; margin-bottom:6px; color:#475569;">${employees.length} pengguna · ${numberOfDays} hari · ${monthValue}</small>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;text-align:left;">
+            <thead><tr style="background:#e0f2fe;position:sticky;top:0;"><th style="padding:6px;">Tanggal</th><th style="padding:6px;">Pengguna</th><th style="padding:6px;">Jadwal Shift</th><th style="padding:6px;">Status</th></tr></thead>
+            <tbody>${rows}</tbody></table>`
+        : '<small>Tidak ada pengguna yang sesuai dengan filter.</small>';
+    }
+
     async function muatRekapPresensiSuperAdmin() {
       const container = document.getElementById('adminRekapList');
       container.innerHTML = "<small>Memuat rekap presensi...</small>";
@@ -1784,7 +1877,8 @@
             shiftKerjaText = "Day Off (00.00 - 00.00)";
           } else if (shiftApproved) {
             const detailText = shiftApproved.shift_choice || shiftApproved.description || '';
-            if (detailText.includes('WFH FT')) shiftKerjaText = "WFH FT (09.00 - 17.00)";
+            if (detailText.includes('Kegiatan di Luar Kantor')) shiftKerjaText = "Kegiatan di Luar Kantor (09.00 - 17.00)";
+            else if (detailText.includes('WFH FT')) shiftKerjaText = "WFH FT (09.00 - 17.00)";
             else if (detailText.includes('WFH EM')) shiftKerjaText = "WFH EM (08.00 - 16.00)";
             else if (detailText.includes('EM') || detailText.includes('08.00')) shiftKerjaText = "EM (08.00 - 16.00)";
             else shiftKerjaText = "FT (09.00 - 17.00)";
