@@ -268,6 +268,7 @@
           <option value="Shift EM (08.00 - 16.00)">Shift EM (08.00 - 16.00)</option>
           <option value="WFH FT (09.00 - 17.00)">WFH FT (09.00 - 17.00)</option>
           <option value="WFH EM (08.00 - 16.00)">WFH EM (08.00 - 16.00)</option>
+          <option value="Kegiatan di Luar Kantor (09.00 - 17.00)">Kegiatan di Luar Kantor (09.00 - 17.00)</option>
         </select>
 
         <textarea id="shiftReqDesc" placeholder="Tuliskan alasan perubahan shift..." rows="3"></textarea>
@@ -796,7 +797,8 @@
 
       if (reqShiftHariIni) {
         const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
-        if (detailTeks.includes('WFH FT')) jamShiftText = "09:00 - 17:00 (WFH FT)";
+        if (detailTeks.includes('Kegiatan di Luar Kantor')) jamShiftText = "09:00 - 17:00 (Kegiatan di Luar Kantor)";
+        else if (detailTeks.includes('WFH FT')) jamShiftText = "09:00 - 17:00 (WFH FT)";
         else if (detailTeks.includes('WFH EM')) jamShiftText = "08:00 - 16:00 (WFH EM)";
         else if (detailTeks.includes('EM') || detailTeks.includes('08.00')) jamShiftText = "08:00 - 16:00 (EM)";
       }
@@ -869,7 +871,8 @@
           const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
           
           if (stShift === 'Disetujui') {
-            if (detailTeks.includes('WFH FT')) shiftWaktuText = "09:00 - 17:00 (WFH FT)";
+            if (detailTeks.includes('Kegiatan di Luar Kantor')) shiftWaktuText = "09:00 - 17:00 (Kegiatan di Luar Kantor)";
+            else if (detailTeks.includes('WFH FT')) shiftWaktuText = "09:00 - 17:00 (WFH FT)";
             else if (detailTeks.includes('WFH EM')) shiftWaktuText = "08:00 - 16:00 (WFH EM)";
             else if (detailTeks.includes('EM') || detailTeks.includes('08.00')) shiftWaktuText = "08:00 - 16:00 (EM)";
             else shiftWaktuText = "09:00 - 17:00 (FT)";
