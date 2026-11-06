@@ -1744,7 +1744,7 @@
       const endDate = year + '-' + String(month + 1 > 12 ? 1 : month + 1).padStart(2, '0') + '-01';
       const nextYear = month === 12 ? year + 1 : year;
       const dateEnd = nextYear + endDate.slice(4);
-      const profilesQuery = supabaseClient.from('profiles').select('id,nama_lengkap,full_name,unit_kerja');
+      const profilesQuery = supabaseClient.from('profiles').select('*');
       const requestsQuery = supabaseClient.from('requests').select('user_id,date,type,status,shift_choice,description,created_at')
         .eq('type', 'shift').gte('date', startDate).lt('date', dateEnd);
       const [profilesResult, requestsResult] = await Promise.all([profilesQuery, requestsQuery]);
