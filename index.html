@@ -281,6 +281,32 @@
       <!-- TAB PERSETUJUAN PERMOHONAN -->
       <div id="tabApprove" class="hidden">
         <h4 style="margin-bottom:8px;">Daftar Pengajuan Anggota / Bawahan</h4>
+
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:10px; text-align:left;">
+          <label for="approvalStatusFilter" style="font-size:11px; font-weight:bold; display:block;">Filter Status:</label>
+          <select id="approvalStatusFilter" onchange="muatDaftarPersetujuan()">
+            <option value="Pending">Menunggu Persetujuan</option>
+            <option value="Disetujui">Disetujui</option>
+            <option value="Ditolak">Ditolak</option>
+          </select>
+
+          <div id="approvalRoleFilterBox" class="hidden">
+            <label for="approvalRoleFilter" style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Filter Level Jabatan:</label>
+            <select id="approvalRoleFilter" onchange="muatDaftarPersetujuan()">
+              <option value="ALL">Semua Level Jabatan</option>
+              <option value="koordinator">Koordinator</option>
+              <option value="asisten_koordinator">Asisten Koordinator</option>
+              <option value="staf_divisi">Staf Divisi/Bidang</option>
+              <option value="analis">Tenaga Pendukung Analis (Setara Koordinator)</option>
+              <option value="teknis">Tenaga Pendukung Teknis (Setara Asisten Koordinator)</option>
+              <option value="administrasi">Tenaga Pendukung Administrasi (Setara Staf Divisi/Bidang)</option>
+              <option value="magang">Pemagang</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="superadmin">Super Admin</option>
+            </select>
+          </div>
+        </div>
+
         <div id="approvalList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
@@ -1353,6 +1379,17 @@
 
     async function muatDaftarPersetujuan() {
       const list = document.getElementById('approvalList');
+      const statusFilterEl = document.getElementById('approvalStatusFilter');
+      const roleFilterBox = document.getElementById('approvalRoleFilterBox');
+      const roleFilterEl = document.getElementById('approvalRoleFilter');
+
+      const isSuperAdmin = userProfile?.role === 'superadmin';
+      if (roleFilterBox) roleFilterBox.classList.toggle('hidden', !isSuperAdmin);
+      if (!isSuperAdmin && roleFilterEl) roleFilterEl.value = 'ALL';
+
+      const selectedStatus = statusFilterEl?.value || 'Pending';
+      const selectedRole = isSuperAdmin ? (roleFilterEl?.value || 'ALL') : 'ALL';
+
       list.innerHTML = "<small>Memuat data...</small>";
 
       const { data: reqs, error: reqErr } = await supabaseClient
@@ -1374,15 +1411,25 @@
 
         const filteredReqs = reqs.filter(r => {
           const pemohonProfile = profilesMap[r.user_id];
-          if (userProfile?.role === 'superadmin') return true;
-          
+          const requestStatus = r.status || 'Pending';
+
+          if (requestStatus !== selectedStatus) return false;
+
+          if (isSuperAdmin) {
+            if (selectedRole !== 'ALL' && pemohonProfile?.role !== selectedRole) return false;
+            return true;
+          }
+
           const isDirectBawahan = pemohonProfile?.supervisor_id === currentUser.id;
           // Hanya atasan langsung pada approval line yang melihat pengajuan.
           return isDirectBawahan;
         });
 
         if (filteredReqs.length === 0) {
-          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari bawahan langsung Anda.</small>";
+          const statusLabel = selectedStatus === 'Pending' ? 'Menunggu Persetujuan' : selectedStatus;
+          const roleLabel = selectedRole !== 'ALL' ? ` untuk level jabatan ${formatRoleLabel(selectedRole)}` : '';
+          const scopeLabel = isSuperAdmin ? '' : ' dari bawahan langsung Anda';
+          list.innerHTML = `<small style='color:#64748b;'>Tidak ada pengajuan berstatus <b>${statusLabel}</b>${roleLabel}${scopeLabel}.</small>`;
           return;
         }
 
