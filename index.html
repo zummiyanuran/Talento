@@ -422,6 +422,7 @@
       <!-- TAB 7: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
         <h4>Daftar Rekan Kerja</h4>
+        <input type="text" id="rekanSearchInput" placeholder="🔍 Cari nama, email, jabatan, atau unit..." oninput="filterRekanList()" style="margin-bottom:8px;">
         <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
@@ -484,6 +485,7 @@
     let userAttendances = [];
     let userRequests = [];
     let listSupervisors = [];
+    let dataRekan = [];
     let dataExportSuperAdmin = [];
 
     function formatRoleLabel(roleKey) {
@@ -2272,26 +2274,26 @@ async function superAdminRegisterUser() {
       await muatMenuSuperAdmin();
     }
 
-    async function muatRekan() {
-      const { data } = await supabaseClient.from('profiles').select('*');
-      listSupervisors = data || [];
+    function renderRekanList(data) {
       const list = document.getElementById('rekanList');
-      
+
       if (data && data.length > 0) {
         list.innerHTML = data.map(r => {
           const namaRekan = r.nama_lengkap || r.full_name || 'Pegawai';
           const roleRekan = formatRoleLabel(r.role);
           const unitRekan = r.unit_kerja || 'Umum';
+          const emailRekan = r.email || '-';
           const phoneRekan = r.phone_number || '-';
-          const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "") 
-            ? r.avatar_url 
+          const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "")
+            ? r.avatar_url
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=2563eb&color=fff`;
 
           return `
             <div class="list-item" style="display:flex; align-items:center; gap:10px;">
               <img src="${avatarRekan}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
-              <div>
+              <div style="min-width:0;">
                 <b>${namaRekan}</b> <small style="color:#2563eb;">(${roleRekan})</small><br>
+                <small style="color:#475569;">✉️ Email: ${emailRekan}</small><br>
                 <small style="color:#475569;">📞 WA/Telp: ${phoneRekan}</small><br>
                 <small style="color:#64748b;">🏢 Unit: ${unitRekan}</small>
               </div>
@@ -2299,8 +2301,40 @@ async function superAdminRegisterUser() {
           `;
         }).join('');
       } else {
-        list.innerHTML = "<small style='color:#64748b;'>Belum ada profil rekan lain yang tersimpan.</small>";
+        list.innerHTML = "<small style='color:#64748b;'>Tidak ada rekan yang cocok dengan pencarian.</small>";
       }
+    }
+
+    function filterRekanList() {
+      const keyword = (document.getElementById('rekanSearchInput')?.value || '').trim().toLowerCase();
+
+      if (!keyword) {
+        renderRekanList(dataRekan);
+        return;
+      }
+
+      const hasil = dataRekan.filter(r => {
+        const nama = (r.nama_lengkap || r.full_name || '').toLowerCase();
+        const email = (r.email || '').toLowerCase();
+        const role = formatRoleLabel(r.role).toLowerCase();
+        const unit = (r.unit_kerja || '').toLowerCase();
+        const phone = (r.phone_number || '').toLowerCase();
+
+        return [nama, email, role, unit, phone].some(v => v.includes(keyword));
+      });
+
+      renderRekanList(hasil);
+    }
+
+    async function muatRekan() {
+      const { data } = await supabaseClient.from('profiles').select('*');
+      listSupervisors = data || [];
+      dataRekan = data || [];
+
+      const searchInput = document.getElementById('rekanSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      renderRekanList(dataRekan);
     }
   </script>
 </body>
