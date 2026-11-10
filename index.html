@@ -283,6 +283,9 @@
         <h4 style="margin-bottom:8px;">Daftar Pengajuan Anggota / Bawahan</h4>
 
         <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:10px; text-align:left;">
+          <label for="approvalSearchInput" style="font-size:11px; font-weight:bold; display:block;">Pencarian:</label>
+          <input type="text" id="approvalSearchInput" placeholder="🔍 Cari nama, email, jenis, tanggal, detail, jabatan, atau unit..." oninput="muatDaftarPersetujuan()" style="margin-bottom:8px;">
+
           <label for="approvalStatusFilter" style="font-size:11px; font-weight:bold; display:block;">Filter Status:</label>
           <select id="approvalStatusFilter" onchange="muatDaftarPersetujuan()">
             <option value="Pending">Menunggu Persetujuan</option>
@@ -1384,6 +1387,7 @@
       const statusFilterEl = document.getElementById('approvalStatusFilter');
       const roleFilterBox = document.getElementById('approvalRoleFilterBox');
       const roleFilterEl = document.getElementById('approvalRoleFilter');
+      const searchInputEl = document.getElementById('approvalSearchInput');
 
       const isSuperAdmin = userProfile?.role === 'superadmin';
       if (roleFilterBox) roleFilterBox.classList.toggle('hidden', !isSuperAdmin);
@@ -1391,6 +1395,7 @@
 
       const selectedStatus = statusFilterEl?.value || 'Pending';
       const selectedRole = isSuperAdmin ? (roleFilterEl?.value || 'ALL') : 'ALL';
+      const searchKeyword = (searchInputEl?.value || '').trim().toLowerCase();
 
       list.innerHTML = "<small>Memuat data...</small>";
 
@@ -1417,6 +1422,21 @@
 
           if (requestStatus !== selectedStatus) return false;
 
+          if (searchKeyword) {
+            const pemohon = (pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || '').toLowerCase();
+            const email = (pemohonProfile?.email || '').toLowerCase();
+            const role = formatRoleLabel(pemohonProfile?.role).toLowerCase();
+            const unit = (pemohonProfile?.unit_kerja || '').toLowerCase();
+            const type = (r.type || '').toLowerCase();
+            const status = requestStatus.toLowerCase();
+            const date = (r.date || r.created_at || '').toLowerCase();
+            const description = (r.description || '').toLowerCase();
+            const shiftChoice = (r.shift_choice || '').toLowerCase();
+
+            const haystack = [pemohon, email, role, unit, type, status, date, description, shiftChoice].join(' ');
+            if (!haystack.includes(searchKeyword)) return false;
+          }
+
           if (isSuperAdmin) {
             if (selectedRole !== 'ALL' && pemohonProfile?.role !== selectedRole) return false;
             return true;
@@ -1431,7 +1451,8 @@
           const statusLabel = selectedStatus === 'Pending' ? 'Menunggu Persetujuan' : selectedStatus;
           const roleLabel = selectedRole !== 'ALL' ? ` untuk level jabatan ${formatRoleLabel(selectedRole)}` : '';
           const scopeLabel = isSuperAdmin ? '' : ' dari bawahan langsung Anda';
-          list.innerHTML = `<small style='color:#64748b;'>Tidak ada pengajuan berstatus <b>${statusLabel}</b>${roleLabel}${scopeLabel}.</small>`;
+          const searchLabel = searchKeyword ? ` yang cocok dengan pencarian "<b>${searchInputEl.value}</b>"` : '';
+          list.innerHTML = `<small style='color:#64748b;'>Tidak ada pengajuan berstatus <b>${statusLabel}</b>${roleLabel}${scopeLabel}${searchLabel}.</small>`;
           return;
         }
 
