@@ -70,6 +70,22 @@
       <input type="email" id="email" placeholder="Email Pengguna">
       <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
       <button type="button" onclick="login()">Masuk</button>
+      <button type="button" onclick="tampilkanLupaPassword()" style="background:transparent;color:#2563eb;width:auto;padding:8px;margin-top:6px;text-decoration:underline;">Lupa Password?</button>
+    </div>
+
+    <!-- PEMULIHAN PASSWORD -->
+    <div id="forgotPasswordSection" class="hidden">
+      <h3>Lupa Password</h3>
+      <p style="font-size:13px;color:#475569;">Masukkan email yang terdaftar di Talento. Kami akan mengirimkan tautan untuk membuat password baru.</p>
+      <input type="email" id="resetEmail" placeholder="Email Pengguna" autocomplete="email">
+      <button type="button" id="sendResetBtn" onclick="kirimTautanReset()">Kirim Tautan Reset Password</button>
+      <button type="button" onclick="kembaliKeLogin()" style="background:#64748b;">Kembali ke Login</button>
+    </div>
+    <div id="resetPasswordSection" class="hidden">
+      <h3>Buat Password Baru</h3>
+      <input type="password" id="resetNewPassword" placeholder="Password baru (minimal 6 karakter)" autocomplete="new-password">
+      <input type="password" id="resetConfirmPassword" placeholder="Konfirmasi password baru" autocomplete="new-password">
+      <button type="button" id="saveResetBtn" onclick="simpanPasswordBaru()">Simpan Password Baru</button>
     </div>
 
     <!-- DASHBOARD UTAMA -->
@@ -597,7 +613,7 @@
 
     async function checkAuth() {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      if (user) {
+      if (user && !sedangPemulihan) {
         currentUser = user;
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('mainDashboard').classList.remove('hidden');
@@ -613,7 +629,83 @@
         await muatRiwayatClaim();
       }
     }
+    // Tautan pemulihan Supabase mengembalikan pengguna ke URL aplikasi ini.
+    let sedangPemulihan = new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery' ||
+      new URLSearchParams(location.search).get('type') === 'recovery';
+
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        sedangPemulihan = true;
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('forgotPasswordSection').classList.add('hidden');
+        document.getElementById('mainDashboard').classList.add('hidden');
+        document.getElementById('resetPasswordSection').classList.remove('hidden');
+        document.getElementById('status').textContent = 'Silakan masukkan password baru.';
+      }
+    });
+
     checkAuth();
+
+    function tampilkanLupaPassword() {
+      document.getElementById('resetEmail').value = document.getElementById('email').value.trim();
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('forgotPasswordSection').classList.remove('hidden');
+      document.getElementById('status').textContent = '';
+    }
+
+    function kembaliKeLogin() {
+      document.getElementById('forgotPasswordSection').classList.add('hidden');
+      document.getElementById('authSection').classList.remove('hidden');
+      document.getElementById('status').textContent = '';
+    }
+
+    async function kirimTautanReset() {
+      const email = document.getElementById('resetEmail').value.trim();
+      const status = document.getElementById('status');
+      if (!email || !document.getElementById('resetEmail').checkValidity()) {
+        status.textContent = 'Masukkan alamat email yang valid.';
+        return;
+      }
+      const tombol = document.getElementById('sendResetBtn');
+      tombol.disabled = true;
+      status.textContent = 'Mengirim tautan pemulihan...';
+      try {
+        const redirectTo = location.origin + location.pathname;
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+        if (error) throw error;
+        status.textContent = 'Jika email terdaftar, tautan reset password akan dikirim. Periksa juga folder spam.';
+      } catch (error) {
+        status.textContent = 'Tautan belum dapat dikirim: ' + (error.message || 'Silakan coba lagi.');
+      } finally {
+        tombol.disabled = false;
+      }
+    }
+
+    async function simpanPasswordBaru() {
+      const password = document.getElementById('resetNewPassword').value;
+      const konfirmasi = document.getElementById('resetConfirmPassword').value;
+      const status = document.getElementById('status');
+      if (password.length < 6) { status.textContent = 'Password minimal 6 karakter.'; return; }
+      if (password !== konfirmasi) { status.textContent = 'Konfirmasi password tidak sama.'; return; }
+      const tombol = document.getElementById('saveResetBtn');
+      tombol.disabled = true;
+      status.textContent = 'Menyimpan password baru...';
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password });
+        if (error) throw error;
+        await supabaseClient.auth.signOut();
+        sedangPemulihan = false;
+        history.replaceState(null, '', location.pathname);
+        document.getElementById('resetPasswordSection').classList.add('hidden');
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('password').value = '';
+        status.textContent = 'Password berhasil diperbarui. Silakan login menggunakan password baru.';
+      } catch (error) {
+        status.textContent = 'Gagal memperbarui password: ' + (error.message || 'Silakan coba lagi.');
+      } finally {
+        tombol.disabled = false;
+      }
+    }
 
     async function login() {
       const email = document.getElementById('email').value.trim();
