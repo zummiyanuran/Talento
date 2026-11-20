@@ -503,6 +503,65 @@
     let userProfile = null;
     let userAttendances = [];
     let userRequests = [];
+    let shiftRealtimeChannel = null;
+    let refreshShiftSedangBerjalan = false;
+    let refreshShiftPerluUlang = false;
+
+    function pilihPengajuanShift(tanggal, hanyaDisetujui = false) {
+      const cocok = userRequests.filter(r =>
+        r.type === 'shift' && String(r.date || '').split('T')[0] === tanggal
+      );
+      const disetujui = cocok.filter(r => r.status === 'Disetujui')
+        .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+      if (disetujui.length) return disetujui[0];
+      return hanyaDisetujui ? null : cocok.filter(r => r.status === 'Pending')
+        .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0] || null;
+    }
+
+    async function segarkanDataShift() {
+      if (!currentUser?.id) return;
+      if (refreshShiftSedangBerjalan) {
+        refreshShiftPerluUlang = true;
+        return;
+      }
+      refreshShiftSedangBerjalan = true;
+      try {
+        do {
+          refreshShiftPerluUlang = false;
+          if (!(await muatUserRequests()) || !currentUser?.id) break;
+          await Promise.all([muatShiftHariIni(), muatJadwalShift(), muatRiwayatShift()]);
+        } while (refreshShiftPerluUlang);
+      } catch (err) {
+        console.error('Gagal menyegarkan data shift:', err);
+      } finally {
+        refreshShiftSedangBerjalan = false;
+      }
+    }
+
+    function aktifkanSinkronisasiShift() {
+      if (!currentUser?.id || shiftRealtimeChannel) return;
+      shiftRealtimeChannel = supabaseClient
+        .channel('talento-shift-' + currentUser.id)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'requests',
+          filter: 'user_id=eq.' + currentUser.id
+        }, () => { segarkanDataShift(); })
+        .subscribe(status => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('Realtime shift tidak tersambung; refresh berkala tetap aktif.');
+          }
+        });
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && currentUser?.id) segarkanDataShift();
+    });
+    window.addEventListener('focus', () => {
+      if (currentUser?.id) segarkanDataShift();
+    });
+    setInterval(() => {
+      if (!document.hidden && currentUser?.id) segarkanDataShift();
+    }, 60000);
     let listSupervisors = [];
     let dataRekan = [];
     let dataExportSuperAdmin = [];
@@ -627,6 +686,7 @@
         await muatRiwayatLembur();
         await muatRiwayatShift();
         await muatRiwayatClaim();
+        aktifkanSinkronisasiShift();
       }
     }
     // Tautan pemulihan Supabase mengembalikan pengguna ke URL aplikasi ini.
@@ -746,7 +806,7 @@
         }); 
       }
       if (tabName === 'rekan') muatRekan();
-      if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
+      if (tabName === 'shift') { segarkanDataShift(); }
       if (tabName === 'ajukanPresensi' || tabName === 'ajukanAbsen') muatRiwayatClaim();
       if (tabName === 'cuti') muatRiwayatCuti();
       if (tabName === 'lembur') { evaluasiOpsiLembur(); muatRiwayatLembur(); }
@@ -890,11 +950,18 @@
     }
 
     async function muatUserRequests() {
-      const { data } = await supabaseClient
+      if (!currentUser?.id) return false;
+      const { data, error } = await supabaseClient
         .from('requests')
         .select('*')
-        .eq('user_id', currentUser.id);
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Gagal memuat pengajuan terbaru:', error);
+        return false;
+      }
       userRequests = data || [];
+      return true;
     }
 
     async function muatShiftHariIni() {
@@ -932,7 +999,7 @@
         return;
       }
 
-      const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
+      const reqShiftHariIni = pilihPengajuanShift(tglHariIni, true);
       let jamShiftText = "09:00 - 17:00 (FT)";
 
       if (reqShiftHariIni) {
@@ -1001,7 +1068,7 @@
 
         const reqCutiHariIni = userRequests.find(r => (r.type === 'cuti' || r.type === 'izin') && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
         const reqLemburHariIni = userRequests.find(r => r.type === 'lembur' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
-        const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+        const reqShiftHariIni = pilihPengajuanShift(tglStr);
 
         let statusKeterangan = '';
         let shiftWaktuText = "09:00 - 17:00 (FT)";
@@ -1702,6 +1769,8 @@
         statusDiv.innerHTML = `<span style='color:green'>Status berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
         await muatProfil();
         await muatDaftarPersetujuan();
+        await segarkanDataShift();
+        if (userProfile?.role === 'superadmin') await muatJadwalShiftSuperAdmin();
       }
     }
 
