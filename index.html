@@ -456,6 +456,8 @@
           <div><b>Jabatan:</b> <span id="profileRoleText">-</span></div>
           <div><b>Unit Kerja:</b> <span id="profileUnitText">-</span></div>
           <div><b>Atasan Direct:</b> <span id="profileSupervisorText">-</span></div>
+          <div><b>Tanggal Bergabung:</b> <span id="profileTanggalBergabungText">-</span></div>
+          <div><b>Tanggal Berakhir:</b> <span id="profileTanggalBerakhirText">-</span></div>
           <div><b>Saldo Cuti Tahunan (CT):</b> <span id="profileSaldoTahunanText">0 Hari</span></div>
           <div><b>Saldo Cuti Kompensasi (CKOMP):</b> <span id="profileSaldoText">0 Hari</span></div>
         </div>
@@ -1132,6 +1134,12 @@
       container.innerHTML = html;
     }
 
+    function tampilkanTanggalKepegawaian(value) {
+      if (!value) return 'Belum ditetapkan';
+      const bagian = String(value).slice(0, 10).split('-');
+      return bagian.length === 3 ? bagian[2] + '/' + bagian[1] + '/' + bagian[0] : 'Belum ditetapkan';
+    }
+
     async function muatProfil() {
       const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
       if (data) {
@@ -1151,6 +1159,8 @@
         document.getElementById('profileEmailText').innerText = currentUser.email;
         document.getElementById('profileRoleText').innerText = roleText;
         document.getElementById('profileUnitText').innerText = unit;
+        document.getElementById('profileTanggalBergabungText').innerText = tampilkanTanggalKepegawaian(data.tanggal_bergabung);
+        document.getElementById('profileTanggalBerakhirText').innerText = tampilkanTanggalKepegawaian(data.tanggal_berakhir);
         document.getElementById('profileSaldoText').innerText = `${saldoCutiKompensasi} Hari`;
         document.getElementById('profileSaldoTahunanText').innerText = `${saldoTahunan} Hari`;
         document.getElementById('saldoCutiDisplay').innerText = `🎁 Cuti Kompensasi (CKOMP): ${saldoCutiKompensasi} Hari`;
@@ -1844,6 +1854,18 @@
                 </div>
               </div>
 
+              <div style="display:flex; gap:6px; margin-top:4px;">
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block;">Tanggal Bergabung:</label>
+                  <input type="date" id="tanggalBergabung_${u.id}" value="${u.tanggal_bergabung || ''}" style="padding:3px; font-size:11px;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block;">Tanggal Berakhir:</label>
+                  <input type="date" id="tanggalBerakhir_${u.id}" value="${u.tanggal_berakhir || ''}" style="padding:3px; font-size:11px;">
+                </div>
+              </div>
+              <small style="display:block; text-align:left; color:#64748b; font-size:10px;">Kosongkan tanggal berakhir jika belum ditentukan.</small>
+
               <div style="margin-top:4px;">
                 <label style="font-size:10px; display:block;">Approval Line (Atasan Direct):</label>
                 <select id="spv_${u.id}" style="padding:2px; font-size:10px;">
@@ -2411,6 +2433,12 @@ async function superAdminRegisterUser() {
       const saldoTahunanBaru = parseInt(document.getElementById(`saldoTahunan_${targetUserId}`).value) || 0;
       const spvBaru = document.getElementById(`spv_${targetUserId}`).value || null;
       const pwdBaru = document.getElementById(`resetPwd_${targetUserId}`).value;
+      const tanggalBergabung = document.getElementById(`tanggalBergabung_${targetUserId}`).value || null;
+      const tanggalBerakhir = document.getElementById(`tanggalBerakhir_${targetUserId}`).value || null;
+      if (tanggalBergabung && tanggalBerakhir && tanggalBerakhir < tanggalBergabung) {
+        alert('Tanggal berakhir tidak boleh lebih awal dari tanggal bergabung.');
+        return;
+      }
       const status = document.getElementById('status');
 
       status.innerText = "Memperbarui data pengguna...";
@@ -2420,7 +2448,9 @@ async function superAdminRegisterUser() {
         unit_kerja: unitBaru,
         saldo_cuti_kompensasi: saldoBaru,
         saldo_cuti_tahunan: saldoTahunanBaru,
-        supervisor_id: spvBaru
+        supervisor_id: spvBaru,
+        tanggal_bergabung: tanggalBergabung,
+        tanggal_berakhir: tanggalBerakhir
       };
 
       const { error } = await supabaseClient
@@ -2433,7 +2463,7 @@ async function superAdminRegisterUser() {
         return;
       }
 
-      status.innerHTML = "<span style='color:green'>Data pengguna & Saldo Cuti berhasil diperbarui!</span>";
+      status.innerHTML = "<span style='color:green'>Data pengguna, masa kerja & saldo cuti berhasil diperbarui!</span>";
       document.getElementById(`resetPwd_${targetUserId}`).value = '';
       await muatMenuSuperAdmin();
     }
