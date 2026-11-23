@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mulai Menggunakan Talento | Komnas Perempuan</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#243248;background:#f1f4f9}*{box-sizing:border-box}body{margin:0}main{max-width:790px;margin:35px auto;padding:0 18px 40px}.panel{background:#fff;border:1px solid #dfe5ef;border-radius:17px;padding:26px;box-shadow:0 6px 25px #192c4b0c}header{margin-bottom:22px}h1{margin:0;color:#243a80}h2{margin-top:0}p{line-height:1.65}.muted{color:#5e6d80}.steps{display:flex;gap:8px;margin:20px 0}.steps span{height:7px;background:#dce3ed;border-radius:30px;flex:1}.steps span.active{background:#6554c0}.pill{display:inline-block;color:#6352b4;background:#eeeafe;border-radius:30px;padding:6px 12px;font-size:12px;font-weight:700}.lesson{background:#f8f9fe;border:1px solid #e5e8f3;border-radius:12px;padding:18px;margin:18px 0}button,.button{border:0;border-radius:9px;padding:12px 18px;background:#6554c0;color:white;cursor:pointer;font-size:14px;font-weight:650;text-decoration:none;display:inline-block}button:disabled{opacity:.5;cursor:not-allowed}.secondary{background:#e7ebf4;color:#34415a}.actions{display:flex;justify-content:space-between;gap:12px}label{display:block;margin:14px 0 5px;font-weight:650;font-size:14px}input{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:12px;font:inherit}input:focus{outline:2px solid #b4a7ef}.checkrow{display:flex;gap:10px;align-items:flex-start;margin:18px 0}.checkrow input{width:auto;margin-top:5px}.checkrow label{margin:0;font-weight:400}#message{margin:15px 0;white-space:pre-wrap}a{color:#513fbd}.hidden{display:none}ul{line-height:1.9;padding-left:22px}@media(max-width:520px){.panel{padding:18px}main{margin:16px auto}.actions{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<main><header><span class="pill">TALENTO · PANDUAN PENGGUNA BARU</span><h1>Selamat datang di Talento</h1><p class="muted">Pelajari penggunaan HRIS Komnas Perempuan, lalu isi data agar Super Admin dapat mendaftarkan akunmu.</p></header>
+<section class="panel" id="learn">
+<div class="muted" id="progress">Materi 1 dari 7</div><div class="steps" id="steps"></div><article class="lesson"><h2 id="lessonTitle"></h2><div id="lessonText"></div></article>
+<div class="actions"><button class="secondary" id="backBtn" onclick="go(-1)">Sebelumnya</button><button id="nextBtn" onclick="go(1)">Saya paham · Lanjut</button></div>
+</section>
+<section class="panel hidden" id="formPanel"><h2>Formulir pendaftaran</h2><p class="muted">Data hanya digunakan untuk pengajuan akun Talento dan ditinjau oleh Super Admin. Mengisi formulir tidak otomatis membuat akun.</p>
+<form id="registration"><label for="nama">Nama lengkap *</label><input id="nama" name="nama" required maxlength="150" minlength="2" autocomplete="name">
+<label for="telepon">Nomor telepon / WhatsApp *</label><input id="telepon" name="telepon" type="tel" required minlength="8" maxlength="25" autocomplete="tel" placeholder="0812xxxxxxxx">
+<label for="email">Email *</label><input id="email" name="email" type="email" required maxlength="254" autocomplete="email">
+<label for="unit">Unit kerja *</label><input id="unit" name="unit" required minlength="2" maxlength="150" placeholder="Bagian / Bidang / Divisi">
+<label for="join">Join date / tanggal mulai bergabung *</label><input id="join" name="join" type="date" required>
+<div class="checkrow"><input type="checkbox" id="setuju" required><label for="setuju">Saya menyatakan data benar dan setuju data ini dipakai administrator untuk memproses pendaftaran akun Talento.</label></div>
+<div class="actions"><button type="button" class="secondary" onclick="showLearning()">Kembali belajar</button><button id="submitBtn" type="submit">Kirim pengajuan</button></div></form>
+<div id="message" role="status" aria-live="polite"></div></section>
+<p class="muted" style="text-align:center;font-size:13px"><a href="./index.html">Sudah punya akun? Masuk ke Talento</a></p>
+</main>
+<script>
+const DB_URL="https://qoosrykfspqlrjafoirs.supabase.co";
+const DB_KEY="sb_publishable_O2PgCCr6TKyzlfdNSeNzPw_k77fo_AU";
+const db=window.supabase.createClient(DB_URL,DB_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const lessons=[
+["Apa itu Talento?","<p>Talento adalah aplikasi HRIS internal Komnas Perempuan untuk membantu pengelolaan presensi dan administrasi kepegawaian. Akses menu bergantung pada jabatan dan kewenangan.</p>"],
+["Masuk &amp; keamanan akun","<p>Setelah Super Admin membuat akun dan kamu menerima informasi akses, buka halaman login Talento. Masukkan email serta kata sandi. Gunakan menu <b>Lupa Password?</b> bila diperlukan. Jangan berbagi kata sandi.</p>"],
+["Presensi: Clockin &amp; Clockout","<p>Buka tab <b>Presensi</b>. Pilih <b>Clockin</b> saat memulai dan <b>Clockout</b> saat mengakhiri pekerjaan. Izinkan akses lokasi saat diperlukan dan cek riwayat harian untuk memastikan pencatatan.</p>"],
+["Jadwal shift &amp; klaim presensi","<p>Gunakan <b>Jadwal Shift</b> untuk melihat jadwal dan riwayat presensi bulanan. Jika ada presensi yang perlu diklaim, buka <b>Klaim Presensi</b>, lengkapi data dan alasan yang sesuai, lalu periksa status pengajuannya.</p>"],
+["Cuti, lembur, dan tukar shift","<p>Melalui tab <b>Cuti</b> atau <b>Lembur</b>, isi formulir pengajuan sesuai kebutuhan dan pantau persetujuannya. Tab <b>Tukar Shift</b> dipakai untuk permohonan pertukaran jadwal. Persetujuan diproses melalui jalur yang ditetapkan.</p>"],
+["Profil &amp; direktori rekan","<p>Tab <b>Profil</b> menampilkan data pribadimu, informasi unit dan tanggal kepegawaian. Periksa dan perbarui informasi yang memang dapat diedit. Tab <b>Rekan</b> membantu mencari direktori rekan kerja.</p>"],
+["Persetujuan &amp; Super Admin","<p>Pengguna yang diberikan kewenangan dapat melihat tab <b>Persetujuan</b>. <b>Super Admin</b> mengelola akun, jadwal, koreksi presensi, serta administrasi lainnya. Jangan menggunakan akun orang lain untuk mengakses fungsi ini.</p><p>Setelah ini, kirim data pendaftaran agar akun dapat dibuat oleh administrator.</p>"]
+];
+let step=0;function render(){document.getElementById("progress").textContent="Materi "+(step+1)+" dari "+lessons.length;document.getElementById("lessonTitle").innerHTML=lessons[step][0];document.getElementById("lessonText").innerHTML=lessons[step][1];document.getElementById("steps").innerHTML=lessons.map((_,i)=>'<span class="'+(i<=step?'active':'')+'"></span>').join("");document.getElementById("backBtn").disabled=step===0;document.getElementById("nextBtn").textContent=step===lessons.length-1?"Lanjut ke pendaftaran":"Saya paham · Lanjut";}
+function go(n){if(n===1&&step===lessons.length-1){document.getElementById("learn").classList.add("hidden");document.getElementById("formPanel").classList.remove("hidden");return}step=Math.max(0,Math.min(lessons.length-1,step+n));render()}
+function showLearning(){document.getElementById("formPanel").classList.add("hidden");document.getElementById("learn").classList.remove("hidden");render()}
+document.getElementById("registration").addEventListener("submit",async function(e){e.preventDefault();const submit=document.getElementById("submitBtn"),msg=document.getElementById("message");const form=e.target;if(!form.reportValidity())return;submit.disabled=true;msg.textContent="Mengirim pengajuan...";const payload={nama:form.nama.value.trim(),telepon:form.telepon.value.trim(),email:form.email.value.trim().toLowerCase(),unit_kerja:form.unit.value.trim(),join_date:form.join.value};try{const {error}=await db.from("talento_onboarding_requests").insert(payload);if(error)throw error;msg.textContent="Pengajuan terkirim. Super Admin akan meninjau data dan menghubungimu terkait pembuatan akun.";form.reset();submit.classList.add("hidden");}catch(err){msg.textContent="Pengajuan belum berhasil dikirim. Coba lagi atau hubungi administrator. Pastikan tabel onboarding sudah diaktifkan.";console.error("Onboarding:",err.message);}finally{submit.disabled=false}});
+render();
+</script></body></html>
