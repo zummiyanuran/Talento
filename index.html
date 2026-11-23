@@ -70,6 +70,7 @@
       <input type="email" id="email" placeholder="Email Pengguna">
       <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
       <button type="button" onclick="login()">Masuk</button>
+      <a href="./onboarding.html" style="display:block;margin-top:13px;color:#5b47be;font-weight:700;font-size:13px;">Pengguna baru? Pelajari Talento &amp; ajukan akun</a>
       <button type="button" onclick="tampilkanLupaPassword()" style="background:transparent;color:#2563eb;width:auto;padding:8px;margin-top:6px;text-decoration:underline;">Lupa Password?</button>
     </div>
 
@@ -400,6 +401,12 @@
 
         <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
 
+        <div style="padding:12px;border:1px solid #ded6ff;border-radius:10px;margin-bottom:15px;text-align:left;background:#f9f7ff;">
+          <h4 style="color:#5b47be;">Pengajuan Pengguna Baru</h4>
+          <p style="font-size:11px;color:#475569;">Data dikirim melalui halaman pembelajaran. Periksa dulu, lalu gunakan tombol Isi Form untuk menyiapkan pembuatan akun. Password, jabatan dan atasan tetap ditentukan oleh administrator.</p>
+          <button type="button" class="btn-purple" onclick="muatPengajuanOnboarding()">Muat Daftar Pengajuan</button>
+          <div id="onboardingAdminList" style="max-height:320px;overflow:auto;margin-top:10px;font-size:12px;">Klik tombol untuk memuat pengajuan.</div>
+        </div>
         <h4 style="margin-bottom:8px;">Manajemen Akun Baru</h4>
         <div style="background:#f8fafc; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
           <input type="text" id="adminNewName" placeholder="Nama Lengkap">
@@ -2378,7 +2385,37 @@
       XLSX.writeFile(wb, `Rekapitulasi_Lembur_Komnas_Perempuan_${Date.now()}.xlsx`);
     }
 
-async function superAdminRegisterUser() {
+// Pengajuan onboarding hanya dapat diakses oleh Super Admin melalui RLS Supabase.
+    async function muatPengajuanOnboarding() {
+      const target = document.getElementById('onboardingAdminList');
+      if (!target || userProfile?.role !== 'superadmin') return;
+      target.textContent = 'Memuat pengajuan...';
+      const {data,error} = await supabaseClient.from('talento_onboarding_requests')
+        .select('id,nama,telepon,email,unit_kerja,join_date,status,created_at')
+        .order('created_at',{ascending:false}).limit(150);
+      if(error){ target.textContent='Gagal memuat pengajuan: '+error.message; return; }
+      if(!data?.length){ target.textContent='Belum ada pengajuan.'; return; }
+      target.innerHTML='';
+      for(const item of data){
+        const row=document.createElement('div');
+        row.className='list-item'; row.style.margin='8px 0';
+        const info=document.createElement('div');
+        const created=item.created_at?new Date(item.created_at).toLocaleDateString('id-ID'):'-';
+        info.textContent=item.nama+' | '+item.email+' | '+item.telepon+' | '+item.unit_kerja+' | Bergabung: '+item.join_date+' | '+item.status+' | Diajukan: '+created;
+        row.appendChild(info);
+        const fill=document.createElement('button');fill.type='button';fill.textContent='Isi Form Akun';
+        fill.onclick=()=>{document.getElementById('adminNewName').value=item.nama;document.getElementById('adminNewPhone').value=item.telepon;document.getElementById('adminNewEmail').value=item.email;document.getElementById('adminNewUnit').value=item.unit_kerja;document.getElementById('adminNewPassword').focus();};
+        row.appendChild(fill);
+        const status=document.createElement('select');
+        for(const opt of ['Menunggu','Diproses','Selesai','Ditolak']){const o=document.createElement('option');o.value=opt;o.textContent=opt;status.appendChild(o);}
+        status.value=item.status;status.setAttribute('aria-label','Status pengajuan '+item.nama);row.appendChild(status);
+        const save=document.createElement('button');save.type='button';save.className='btn-secondary';save.textContent='Simpan Status';
+        save.onclick=async()=>{save.disabled=true;const {error}=await supabaseClient.from('talento_onboarding_requests').update({status:status.value,processed_at:status.value==='Menunggu'?null:new Date().toISOString()}).eq('id',item.id);save.disabled=false;if(error){alert('Gagal: '+error.message)}else{await muatPengajuanOnboarding()}};
+        row.appendChild(save);target.appendChild(row);
+      }
+    }
+
+    async function superAdminRegisterUser() {
   const name = document.getElementById('adminNewName').value.trim();
   const email = document.getElementById('adminNewEmail').value.trim();
   const phone = document.getElementById('adminNewPhone').value.trim();
