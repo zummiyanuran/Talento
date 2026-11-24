@@ -817,6 +817,25 @@
       if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); muatJadwalShiftSuperAdmin(); }
     }
 
+    const klaimDalamProses = new Set();
+    async function simpanKlaimUnik(payload) {
+      const jenis = value => (value || '').trim().split(/\s+/)[0].toLowerCase();
+      const keys = payload.map(p => [p.user_id,p.date,jenis(p.shift_choice)].join('|'));
+      const duplicate = { error: { message: 'Klaim presensi untuk tanggal dan jenis ini sudah diajukan atau sedang diproses.' } };
+      if (keys.some(k => klaimDalamProses.has(k))) return duplicate;
+      keys.forEach(k => klaimDalamProses.add(k));
+      try {
+        for (const p of payload) {
+          const {data,error} = await supabaseClient.from('requests').select('shift_choice').eq('user_id',p.user_id).eq('date',p.date).eq('type','claim_absen').in('status',['Pending','Disetujui']);
+          if (error) return {error};
+          if ((data || []).some(r => jenis(r.shift_choice) === jenis(p.shift_choice))) return duplicate;
+        }
+        const result = await supabaseClient.from('requests').insert(payload);
+        if (result.error && result.error.code === '23505') return duplicate;
+        return result;
+      } finally { keys.forEach(k => klaimDalamProses.delete(k)); }
+    }
+
     function catatPresensi(tipeAbsen) {
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
@@ -844,7 +863,7 @@
           const shiftChoiceText = `${tipeAbsen} (${jamSekarang})`;
           const descClaim = `[Luar Radius ${jarakMeter}m] Absen ${tipeAbsen} pada ${jamSekarang} WIB. Lokasi: ${alamatTeks}`;
 
-          const { error: claimErr } = await supabaseClient.from('requests').insert([{
+          const { error: claimErr } = await simpanKlaimUnik([{
             user_id: currentUser.id,
             type: 'claim_absen',
             shift_choice: shiftChoiceText,
@@ -1377,7 +1396,7 @@
             }
           ];
 
-          const { error } = await supabaseClient.from('requests').insert(payloadArray);
+          const { error } = await simpanKlaimUnik(payloadArray);
           if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
           else {
             status.innerHTML = "<span style='color:green'>Pengajuan Masuk & Pulang sekaligus berhasil dikirim!</span>";
@@ -1405,7 +1424,7 @@
       if (jenisType === 'shift') fullDescription = `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}`;
       if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Absen ${shiftChoice} - ${desc}`;
 
-      const { error } = await supabaseClient.from('requests').insert([{ 
+      const { error } = await (jenisType === 'claim_absen' ? simpanKlaimUnik : (payload) => supabaseClient.from('requests').insert(payload))([{ 
         user_id: currentUser.id, 
         type: jenisType === 'cuti' ? 'cuti' : jenisType, 
         shift_choice: shiftChoice,
