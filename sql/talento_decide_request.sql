@@ -1,3 +1,24 @@
+-- Existing duplicate Pending claims must not block the first approval.
+create or replace function public.prevent_duplicate_active_attendance_claims()
+returns trigger language plpgsql set search_path = '' as $$
+declare claim_kind text; approving_existing boolean := false;
+begin
+ if new.type is distinct from 'claim_absen' or new.status not in ('Pending','Disetujui') then return new; end if;
+ claim_kind := lower(split_part(btrim(new.shift_choice),' ',1));
+ if tg_op = 'UPDATE' then
+   if old.type = new.type and old.user_id = new.user_id and old.date = new.date and lower(split_part(btrim(old.shift_choice),' ',1)) = claim_kind and old.status in ('Pending','Disetujui') then
+     if new.status = old.status then return new; end if;
+     approving_existing := old.status='Pending' and new.status='Disetujui';
+   end if;
+ end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.user_id::text || '|' || new.date::text || '|' || claim_kind,0));
+ if exists (select 1 from public.requests r where r.user_id=new.user_id and r.date=new.date and r.type='claim_absen' and r.status in ('Pending','Disetujui') and (not approving_existing or r.status='Disetujui') and lower(split_part(btrim(r.shift_choice),' ',1))=claim_kind and r.id is distinct from new.id) then
+   raise exception using errcode='23505', message='Klaim presensi untuk tanggal dan jenis ini sudah diajukan atau disetujui. Periksa duplikasi.';
+ end if;
+ return new;
+end;
+$$;
+
 -- Review and run in a staging database before production rollout.
 -- Invoker privileges preserve RLS; production RLS must also be hardened separately.
 create or replace function public.talento_decide_request(p_id uuid,p_status text)
