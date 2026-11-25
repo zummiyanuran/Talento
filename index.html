@@ -852,8 +852,8 @@
         try {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
-        const tglHariIni = formatTanggalLokal(new Date());
+        const jamSekarang = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()); 
+        const tglHariIni = tanggalWIB(new Date());
 
         const jarakKm = hitungJarak(lat, lng, OFFICE_LAT, OFFICE_LNG);
         const jarakMeter = Math.round(jarakKm * 1000);
@@ -928,12 +928,12 @@
       const btnMasuk = document.getElementById('btnMasuk');
       const btnPulang = document.getElementById('btnPulang');
 
-      btnMasuk.disabled = false;
+      btnMasuk.disabled = presensiSedangBerjalan;
       btnMasuk.innerText = "Clockin";
-      btnPulang.disabled = false;
+      btnPulang.disabled = presensiSedangBerjalan;
       btnPulang.innerText = "Clockout";
 
-      const tglHariIni = formatTanggalLokal(new Date());
+      const tglHariIni = tanggalWIB(new Date());
 
       const bersihkanTanggal = (str) => {
         if (!str) return '';
@@ -946,8 +946,8 @@
       userAttendances.forEach(item => {
         const d = new Date(item.created_at || Date.now());
         gabunganRiwayat.push({
-          tanggal: formatTanggalLokal(d),
-          tglDisplay: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          tanggal: tanggalWIB(d),
+          tglDisplay: d.toLocaleDateString('id-ID', { timeZone:'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' }),
           tipe: item.tipe || 'Masuk',
           jam: item.jam_masuk || '-',
           lokasi: item.alamat || (item.latitude + ', ' + item.longitude),
@@ -1597,18 +1597,16 @@
 
       list.innerHTML = "<small>Memuat data...</small>";
 
-      const { data: reqs, error: reqErr } = await supabaseClient
-        .from('requests')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (reqErr) {
-        list.innerHTML = `<small style='color:red;'>Gagal memuat: ${reqErr.message}</small>`;
+      let reqs, profilesData;
+      try {
+        [reqs, profilesData] = await Promise.all([ambilSemua('requests', q => q.eq('status',selectedStatus)),ambilSemua('profiles')]);
+        reqs.sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)));
+      } catch (err) {
+        list.textContent = 'Gagal memuat: ' + (err.message || err);
         return;
       }
 
       if (reqs && reqs.length > 0) {
-        const { data: profilesData } = await supabaseClient.from('profiles').select('*');
         const profilesMap = {};
         if (profilesData) {
           profilesData.forEach(p => { profilesMap[p.id] = p; });
