@@ -865,6 +865,17 @@
           if(geoData.display_name) alamatTeks = geoData.display_name;
         } catch (e) { console.log("Geocoding Error:", e); }
 
+        const [existingAttendance, existingClaims] = await Promise.all([
+          supabaseClient.from('attendances').select('id').eq('user_id',currentUser.id).eq('tipe',tipeAbsen).gte('created_at',tglHariIni+'T00:00:00+07:00').lt('created_at',new Date(Date.parse(tglHariIni+'T00:00:00+07:00')+86400000).toISOString()).limit(1),
+          supabaseClient.from('requests').select('status,shift_choice').eq('user_id',currentUser.id).eq('date',tglHariIni).eq('type','claim_absen').in('status',['Pending','Disetujui'])
+        ]);
+        if (existingAttendance.error || existingClaims.error) throw new Error('Status presensi belum dapat diperiksa. Silakan coba lagi.');
+        const sameClaims = (existingClaims.data || []).filter(r => String(r.shift_choice || '').trim().split(/\s+/)[0].toLowerCase() === tipeAbsen.toLowerCase());
+        if (existingAttendance.data?.length || sameClaims.some(r => r.status === 'Disetujui') || sameClaims.some(r => r.status === 'Pending')) {
+          statusDiv.textContent = existingAttendance.data?.length || sameClaims.some(r => r.status === 'Disetujui') ? 'Presensi '+tipeAbsen+' hari ini sudah tercatat atau disetujui.' : 'Klaim '+tipeAbsen+' sedang menunggu persetujuan atasan.';
+          await muatUserRequests();
+          return;
+        }
         if (jarakKm > MAX_RADIUS_KM) {
           statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakMeter}m) di luar radius kantor.</b><br>Mencatat lokasi & mengajukan klaim presensi...</span>`;
           
@@ -880,7 +891,7 @@
             status: 'Pending'
           }]);
 
-          if (claimErr) statusDiv.innerHTML = `<span style='color:red'>Gagal Klaim: ${claimErr.message}</span>`;
+          if (claimErr) { await muatUserRequests(); statusDiv.textContent = claimErr.message; }
           else {
             statusDiv.innerHTML = `<span style='color:green'><b>Lokasi Dicatat! Pengajuan Klaim Presensi telah dikirim ke Atasan.</b><br>📍 ${alamatTeks}</span>`;
             await muatUserRequests();
@@ -956,6 +967,16 @@
       });
 
       const presensiHariIni = gabunganRiwayat.filter(g => g.tanggal === tglHariIni);
+      for (const [kind, btn] of [['Masuk',btnMasuk],['Pulang',btnPulang]]) {
+        const claims = userRequests.filter(r => r.type === 'claim_absen' && String(r.date).slice(0,10) === tglHariIni && String(r.shift_choice || '').trim().split(/\s+/)[0].toLowerCase() === kind.toLowerCase());
+        if (claims.some(r => r.status === 'Disetujui')) {
+          btn.disabled = true;
+          btn.innerText = 'Klaim ' + kind + ' Disetujui';
+        } else if (claims.some(r => r.status === 'Pending')) {
+          btn.disabled = true;
+          btn.innerText = 'Klaim ' + kind + ' Menunggu Persetujuan';
+        }
+      }
       
       presensiHariIni.forEach(p => {
         if (p.tipe === 'Masuk') {
