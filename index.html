@@ -531,7 +531,7 @@
         do {
           refreshShiftPerluUlang = false;
           if (!(await muatUserRequests()) || !currentUser?.id) break;
-          await Promise.all([muatShiftHariIni(), muatJadwalShift(), muatRiwayatShift()]);
+          await Promise.all([muatShiftHariIni(), muatJadwalShift(), muatRiwayatShift(), muatRiwayatClaim(), muatRiwayatCuti(), muatRiwayatLembur(), muatRiwayat()]);
         } while (refreshShiftPerluUlang);
       } catch (err) {
         console.error('Gagal menyegarkan data shift:', err);
@@ -836,23 +836,31 @@
       } finally { keys.forEach(k => klaimDalamProses.delete(k)); }
     }
 
+    let presensiSedangBerjalan = false;
     function catatPresensi(tipeAbsen) {
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
+      if (presensiSedangBerjalan) return;
+      presensiSedangBerjalan = true;
+      const buttons = ['btnMasuk','btnPulang'].map(id => document.getElementById(id));
+      const previous = buttons.map(b => b.disabled);
+      buttons.forEach(b => b.disabled = true);
+      const selesai = () => { presensiSedangBerjalan = false; buttons.forEach((b,i) => b.disabled = previous[i]); };
       statusDiv.innerText = `Mengambil lokasi Absen ${tipeAbsen}...`;
       navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
-        const tglHariIni = formatTanggalLokal(new Date());
+        const jamSekarang = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()); 
+        const tglHariIni = tanggalWIB(new Date());
 
         const jarakKm = hitungJarak(lat, lng, OFFICE_LAT, OFFICE_LNG);
         const jarakMeter = Math.round(jarakKm * 1000);
 
         let alamatTeks = `Lokasi GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {signal: AbortSignal.timeout(3000)});
           const geoData = await res.json();
           if(geoData.display_name) alamatTeks = geoData.display_name;
         } catch (e) { console.log("Geocoding Error:", e); }
@@ -902,7 +910,9 @@
           await muatRiwayat();
           await muatJadwalShift();
         }
-      }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak! Pastikan GPS aktif.</span>`, { enableHighAccuracy: true });
+        } catch (err) { statusDiv.textContent = 'Presensi gagal: ' + (err.message || 'Kesalahan jaringan'); }
+        finally { selesai(); try { await muatRiwayat(); } catch(e) { console.error(e); } }
+      }, (err) => { selesai(); statusDiv.textContent = 'GPS gagal: ' + err.message; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     }
 
     async function muatRiwayat() {
@@ -918,12 +928,12 @@
       const btnMasuk = document.getElementById('btnMasuk');
       const btnPulang = document.getElementById('btnPulang');
 
-      btnMasuk.disabled = false;
+      btnMasuk.disabled = presensiSedangBerjalan;
       btnMasuk.innerText = "Clockin";
-      btnPulang.disabled = false;
+      btnPulang.disabled = presensiSedangBerjalan;
       btnPulang.innerText = "Clockout";
 
-      const tglHariIni = formatTanggalLokal(new Date());
+      const tglHariIni = tanggalWIB(new Date());
 
       const bersihkanTanggal = (str) => {
         if (!str) return '';
@@ -936,8 +946,8 @@
       userAttendances.forEach(item => {
         const d = new Date(item.created_at || Date.now());
         gabunganRiwayat.push({
-          tanggal: formatTanggalLokal(d),
-          tglDisplay: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          tanggal: tanggalWIB(d),
+          tglDisplay: d.toLocaleDateString('id-ID', { timeZone:'Asia/Jakarta', day: 'numeric', month: 'short', year: 'numeric' }),
           tipe: item.tipe || 'Masuk',
           jam: item.jam_masuk || '-',
           lokasi: item.alamat || (item.latitude + ', ' + item.longitude),
@@ -1076,7 +1086,7 @@
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHariLibur = liburNasional.includes(tglStr);
 
-        const presensiHariIni = userAttendances.filter(a => bersihkanTanggal(a.created_at) === tglStr);
+        const presensiHariIni = userAttendances.filter(a => tanggalWIB(a.created_at) === tglStr);
         let absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
         let absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
 
@@ -1587,18 +1597,16 @@
 
       list.innerHTML = "<small>Memuat data...</small>";
 
-      const { data: reqs, error: reqErr } = await supabaseClient
-        .from('requests')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (reqErr) {
-        list.innerHTML = `<small style='color:red;'>Gagal memuat: ${reqErr.message}</small>`;
+      let reqs, profilesData;
+      try {
+        [reqs, profilesData] = await Promise.all([ambilSemua('requests', q => q.eq('status',selectedStatus)),ambilSemua('profiles')]);
+        reqs.sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)));
+      } catch (err) {
+        list.textContent = 'Gagal memuat: ' + (err.message || err);
         return;
       }
 
       if (reqs && reqs.length > 0) {
-        const { data: profilesData } = await supabaseClient.from('profiles').select('*');
         const profilesMap = {};
         if (profilesData) {
           profilesData.forEach(p => { profilesMap[p.id] = p; });
@@ -1680,126 +1688,30 @@
       }
     }
 
+    const approvalDalamProses = new Set();
     async function updateStatusIzin(id, statusBaru) {
       const statusDiv = document.getElementById('status');
-      statusDiv.innerText = `Memproses status...`;
-
-      // Verifikasi ulang kewenangan sebelum mengubah saldo, presensi, atau status.
-      if (!currentUser?.id || !['Disetujui', 'Ditolak'].includes(statusBaru)) {
-        statusDiv.innerText = 'Aksi persetujuan tidak valid.';
-        return;
-      }
-
-      const { data: reqData, error: reqError } = await supabaseClient
-        .from('requests').select('*').eq('id', id).single();
-      if (reqError || !reqData) {
-        statusDiv.innerText = 'Pengajuan tidak ditemukan atau tidak dapat diakses.';
-        return;
-      }
-      if (reqData.status !== 'Pending') {
-        statusDiv.innerText = 'Pengajuan ini sudah diproses.';
-        return;
-      }
-
-      const { data: approverProfile, error: approverError } = await supabaseClient
-        .from('profiles').select('role').eq('id', currentUser.id).single();
-      const { data: applicantProfile, error: applicantError } = await supabaseClient
-        .from('profiles').select('supervisor_id').eq('id', reqData.user_id).single();
-      if (approverError || applicantError || !approverProfile || !applicantProfile) {
-        statusDiv.innerText = 'Gagal memverifikasi approval line.';
-        return;
-      }
-      if (approverProfile.role !== 'superadmin' && applicantProfile.supervisor_id !== currentUser.id) {
-        statusDiv.innerText = 'Ditolak: pemohon tidak termasuk dalam approval line Anda.';
-        return;
-      }
-
-      if (reqData) {
-        if (statusBaru === 'Disetujui') {
-          const targetUserId = reqData.user_id;
-          const { data: targetProfile } = await supabaseClient.from('profiles').select('*').eq('id', targetUserId).single();
-          let currentSaldoKompensasi = targetProfile?.saldo_cuti_kompensasi || 0;
-          let currentSaldoTahunan = targetProfile?.saldo_cuti_tahunan !== undefined ? targetProfile.saldo_cuti_tahunan : 0;
-
-          const sChoice = reqData.shift_choice || '';
-
-          // 1. Pengurangan Saldo Cuti Tahunan (CT)
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CT') || sChoice === 'CT' || sChoice.includes('Cuti Tahunan'))) {
-            const newSaldoT = Math.max(0, currentSaldoTahunan - 1);
-            await supabaseClient.from('profiles').update({ saldo_cuti_tahunan: newSaldoT }).eq('id', targetUserId);
-          }
-
-          // 2. Pengurangan Saldo Cuti Kompensasi (CKOMP)
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CKOMP') || sChoice.includes('Cuti Kompensasi'))) {
-            const newSaldoK = Math.max(0, currentSaldoKompensasi - 1);
-            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
-          }
-
-          // 3. Penambahan Saldo Cuti Kompensasi saat Lembur Hari Libur Disetujui
-          if (reqData.type === 'lembur' && sChoice.includes('Saldo Cuti Kompensasi')) {
-            const newSaldoK = currentSaldoKompensasi + 1;
-            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
-          }
-
-          // 4. Overwrite / Injeksi Presensi saat Klaim Absen Disetujui
-          if (reqData.type === 'claim_absen') {
-            const tglClaim = reqData.date;
-            let tipeAbsen = 'Masuk';
-            let jamAbsen = '09:00';
-
-            if (sChoice.includes('Masuk')) tipeAbsen = 'Masuk';
-            if (sChoice.includes('Pulang')) tipeAbsen = 'Pulang';
-
-            const mJam = sChoice.match(/\((.*?)\)/);
-            if (mJam) jamAbsen = mJam[1];
-
-            // Cari apakah record presensi pada tanggal & tipe tersebut sudah ada
-            const { data: existingAtt } = await supabaseClient
-              .from('attendances')
-              .select('*')
-              .eq('user_id', targetUserId)
-              .eq('tipe', tipeAbsen);
-
-            const bersihkanTgl = (str) => str ? str.split('T')[0].trim() : '';
-            const existingRecord = (existingAtt || []).find(a => bersihkanTgl(a.created_at) === tglClaim);
-
-            if (existingRecord) {
-              // Jika sudah ada -> Overwrite
-              await supabaseClient.from('attendances').update({
-                jam_masuk: jamAbsen,
-                alamat: `[KLAIM DISETUJUI] ${reqData.description || 'Klaim Presensi'}`,
-                status: 'Hadir'
-              }).eq('id', existingRecord.id);
-            } else {
-              // Jika belum ada -> Insert record presensi baru
-              await supabaseClient.from('attendances').insert([{
-                user_id: targetUserId,
-                jam_masuk: jamAbsen,
-                latitude: OFFICE_LAT,
-                longitude: OFFICE_LNG,
-                alamat: `[KLAIM DISETUJUI] ${reqData.description || 'Klaim Presensi'}`,
-                tipe: tipeAbsen,
-                status: 'Hadir',
-                created_at: `${tglClaim}T08:00:00.000Z`
-              }]);
-            }
-          }
-        }
-      }
-
-      const { error } = await supabaseClient
-        .from('requests')
-        .update({ status: statusBaru })
-        .eq('id', id)
-        .eq('status', 'Pending');
-
-      if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else {
-        statusDiv.innerHTML = `<span style='color:green'>Status berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
-        await muatProfil();
-        await muatDaftarPersetujuan();
-        await segarkanDataShift();
+      if (!currentUser?.id || !['Disetujui','Ditolak'].includes(statusBaru) || approvalDalamProses.has(id)) return;
+      approvalDalamProses.add(id);
+      const buttons = [...document.querySelectorAll('#approvalList button')].filter(b => (b.getAttribute('onclick') || '').includes(id));
+      buttons.forEach(b => b.disabled = true);
+      const notice = document.createElement('div');
+      notice.setAttribute('role','status');
+      notice.textContent = 'Memproses status...';
+      document.getElementById('approvalList').before(notice);
+      try {
+        const {data,error} = await supabaseClient.rpc('talento_decide_request', {p_id:id,p_status:statusBaru});
+        if (error) throw error;
+        if (data !== statusBaru) throw new Error('Status belum terkonfirmasi.');
+        notice.textContent = statusDiv.textContent = 'Status berhasil diubah menjadi ' + statusBaru;
+        await Promise.all([muatProfil(),muatDaftarPersetujuan(),segarkanDataShift()]);
         if (userProfile?.role === 'superadmin') await muatJadwalShiftSuperAdmin();
+      } catch(err) {
+        notice.textContent = statusDiv.textContent = 'Periksa kembali status pengajuan: ' + (err.message || err);
+      } finally {
+        approvalDalamProses.delete(id);
+        buttons.forEach(b => b.disabled = false);
+        setTimeout(() => notice.remove(),15000);
       }
     }
 
@@ -2070,6 +1982,22 @@
         : '<small>Tidak ada pengguna yang sesuai dengan filter.</small>';
     }
 
+    async function ambilSemua(tabel, filter = q => q) {
+      const rows = [];
+      for (let offset = 0; ; offset += 500) {
+        const {data,error} = await filter(supabaseClient.from(tabel).select('*')).order('id').range(offset,offset+499);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < 500) return rows;
+      }
+    }
+    function tanggalWIB(value) {
+      if (!value) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+      const get = type => parts.find(p => p.type === type)?.value;
+      return `${get('year')}-${get('month')}-${get('day')}`;
+    }
     async function muatRekapPresensiSuperAdmin() {
       const container = document.getElementById('adminRekapList');
       container.innerHTML = "<small>Memuat rekap presensi...</small>";
@@ -2097,12 +2025,13 @@
         }
       } catch (e) { console.log("Gagal memuat libur", e); }
 
-      const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+      dataExportSuperAdmin = [];
+      try {
+      const allUsers = await ambilSemua('profiles');
       const usersMap = {};
       if (allUsers) allUsers.forEach(u => usersMap[u.id] = u);
 
-      const { data: attendances } = await supabaseClient.from('attendances').select('*');
-      const { data: requests } = await supabaseClient.from('requests').select('*');
+      const [attendances, requests] = await Promise.all([ambilSemua('attendances'), ambilSemua('requests')]);
 
       const bersihkanTanggal = (str) => {
         if (!str) return '';
@@ -2171,6 +2100,13 @@
             if (taggingLokasi === '-') taggingLokasi = absenPulang.alamat || (absenPulang.latitude + ', ' + absenPulang.longitude);
           }
 
+          for (const claim of reqHariIni.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui' && r.date === tglStr).sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)))) {
+            const match = /^(Masuk|Pulang)\s*\((\d{2}:\d{2})\)/i.exec(claim.shift_choice || '');
+            if (!match) continue;
+            if (match[1].toLowerCase() === 'masuk' && jamMasuk === '-') jamMasuk = match[2];
+            if (match[1].toLowerCase() === 'pulang' && jamPulang === '-') jamPulang = match[2];
+            if (taggingLokasi === '-') taggingLokasi = '[KLAIM DISETUJUI] ' + (claim.description || 'Klaim Presensi');
+          }
           if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
           if (cutiApproved) {
             statusAbsen = `Cuti (${cutiApproved.shift_choice || 'Disetujui'})`;
@@ -2214,9 +2150,11 @@
       } else {
         container.innerHTML = "<small style='color:#64748b;'>Tidak ada data presensi pada periode ini.</small>";
       }
+      } catch (err) { dataExportSuperAdmin = []; container.textContent = 'Gagal memuat rekap: ' + (err.message || err); }
     }
 
-    function exportToExcel() {
+    async function exportToExcel() {
+      await muatRekapPresensiSuperAdmin();
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const dataFormatted = dataExportSuperAdmin.map(item => ({
         "Tanggal": item.tanggal,
@@ -2237,7 +2175,8 @@
       XLSX.writeFile(wb, `Rekap_Presensi_Komnas_Perempuan_${Date.now()}.xlsx`);
     }
 
-    function exportToPDF() {
+    async function exportToPDF() {
+      await muatRekapPresensiSuperAdmin();
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape');
