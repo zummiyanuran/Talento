@@ -1690,126 +1690,30 @@
       }
     }
 
+    const approvalDalamProses = new Set();
     async function updateStatusIzin(id, statusBaru) {
       const statusDiv = document.getElementById('status');
-      statusDiv.innerText = `Memproses status...`;
-
-      // Verifikasi ulang kewenangan sebelum mengubah saldo, presensi, atau status.
-      if (!currentUser?.id || !['Disetujui', 'Ditolak'].includes(statusBaru)) {
-        statusDiv.innerText = 'Aksi persetujuan tidak valid.';
-        return;
-      }
-
-      const { data: reqData, error: reqError } = await supabaseClient
-        .from('requests').select('*').eq('id', id).single();
-      if (reqError || !reqData) {
-        statusDiv.innerText = 'Pengajuan tidak ditemukan atau tidak dapat diakses.';
-        return;
-      }
-      if (reqData.status !== 'Pending') {
-        statusDiv.innerText = 'Pengajuan ini sudah diproses.';
-        return;
-      }
-
-      const { data: approverProfile, error: approverError } = await supabaseClient
-        .from('profiles').select('role').eq('id', currentUser.id).single();
-      const { data: applicantProfile, error: applicantError } = await supabaseClient
-        .from('profiles').select('supervisor_id').eq('id', reqData.user_id).single();
-      if (approverError || applicantError || !approverProfile || !applicantProfile) {
-        statusDiv.innerText = 'Gagal memverifikasi approval line.';
-        return;
-      }
-      if (approverProfile.role !== 'superadmin' && applicantProfile.supervisor_id !== currentUser.id) {
-        statusDiv.innerText = 'Ditolak: pemohon tidak termasuk dalam approval line Anda.';
-        return;
-      }
-
-      if (reqData) {
-        if (statusBaru === 'Disetujui') {
-          const targetUserId = reqData.user_id;
-          const { data: targetProfile } = await supabaseClient.from('profiles').select('*').eq('id', targetUserId).single();
-          let currentSaldoKompensasi = targetProfile?.saldo_cuti_kompensasi || 0;
-          let currentSaldoTahunan = targetProfile?.saldo_cuti_tahunan !== undefined ? targetProfile.saldo_cuti_tahunan : 0;
-
-          const sChoice = reqData.shift_choice || '';
-
-          // 1. Pengurangan Saldo Cuti Tahunan (CT)
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CT') || sChoice === 'CT' || sChoice.includes('Cuti Tahunan'))) {
-            const newSaldoT = Math.max(0, currentSaldoTahunan - 1);
-            await supabaseClient.from('profiles').update({ saldo_cuti_tahunan: newSaldoT }).eq('id', targetUserId);
-          }
-
-          // 2. Pengurangan Saldo Cuti Kompensasi (CKOMP)
-          if ((reqData.type === 'cuti' || reqData.type === 'izin') && (sChoice.includes('CKOMP') || sChoice.includes('Cuti Kompensasi'))) {
-            const newSaldoK = Math.max(0, currentSaldoKompensasi - 1);
-            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
-          }
-
-          // 3. Penambahan Saldo Cuti Kompensasi saat Lembur Hari Libur Disetujui
-          if (reqData.type === 'lembur' && sChoice.includes('Saldo Cuti Kompensasi')) {
-            const newSaldoK = currentSaldoKompensasi + 1;
-            await supabaseClient.from('profiles').update({ saldo_cuti_kompensasi: newSaldoK }).eq('id', targetUserId);
-          }
-
-          // 4. Overwrite / Injeksi Presensi saat Klaim Absen Disetujui
-          if (reqData.type === 'claim_absen') {
-            const tglClaim = reqData.date;
-            let tipeAbsen = 'Masuk';
-            let jamAbsen = '09:00';
-
-            if (sChoice.includes('Masuk')) tipeAbsen = 'Masuk';
-            if (sChoice.includes('Pulang')) tipeAbsen = 'Pulang';
-
-            const mJam = sChoice.match(/\((.*?)\)/);
-            if (mJam) jamAbsen = mJam[1];
-
-            // Cari apakah record presensi pada tanggal & tipe tersebut sudah ada
-            const { data: existingAtt } = await supabaseClient
-              .from('attendances')
-              .select('*')
-              .eq('user_id', targetUserId)
-              .eq('tipe', tipeAbsen);
-
-            const bersihkanTgl = (str) => str ? str.split('T')[0].trim() : '';
-            const existingRecord = (existingAtt || []).find(a => bersihkanTgl(a.created_at) === tglClaim);
-
-            if (existingRecord) {
-              // Jika sudah ada -> Overwrite
-              await supabaseClient.from('attendances').update({
-                jam_masuk: jamAbsen,
-                alamat: `[KLAIM DISETUJUI] ${reqData.description || 'Klaim Presensi'}`,
-                status: 'Hadir'
-              }).eq('id', existingRecord.id);
-            } else {
-              // Jika belum ada -> Insert record presensi baru
-              await supabaseClient.from('attendances').insert([{
-                user_id: targetUserId,
-                jam_masuk: jamAbsen,
-                latitude: OFFICE_LAT,
-                longitude: OFFICE_LNG,
-                alamat: `[KLAIM DISETUJUI] ${reqData.description || 'Klaim Presensi'}`,
-                tipe: tipeAbsen,
-                status: 'Hadir',
-                created_at: `${tglClaim}T08:00:00.000Z`
-              }]);
-            }
-          }
-        }
-      }
-
-      const { error } = await supabaseClient
-        .from('requests')
-        .update({ status: statusBaru })
-        .eq('id', id)
-        .eq('status', 'Pending');
-
-      if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else {
-        statusDiv.innerHTML = `<span style='color:green'>Status berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
-        await muatProfil();
-        await muatDaftarPersetujuan();
-        await segarkanDataShift();
+      if (!currentUser?.id || !['Disetujui','Ditolak'].includes(statusBaru) || approvalDalamProses.has(id)) return;
+      approvalDalamProses.add(id);
+      const buttons = [...document.querySelectorAll('#approvalList button')].filter(b => (b.getAttribute('onclick') || '').includes(id));
+      buttons.forEach(b => b.disabled = true);
+      const notice = document.createElement('div');
+      notice.setAttribute('role','status');
+      notice.textContent = 'Memproses status...';
+      document.getElementById('approvalList').before(notice);
+      try {
+        const {data,error} = await supabaseClient.rpc('talento_decide_request', {p_id:id,p_status:statusBaru});
+        if (error) throw error;
+        if (data !== statusBaru) throw new Error('Status belum terkonfirmasi.');
+        notice.textContent = statusDiv.textContent = 'Status berhasil diubah menjadi ' + statusBaru;
+        await Promise.all([muatProfil(),muatDaftarPersetujuan(),segarkanDataShift()]);
         if (userProfile?.role === 'superadmin') await muatJadwalShiftSuperAdmin();
+      } catch(err) {
+        notice.textContent = statusDiv.textContent = 'Periksa kembali status pengajuan: ' + (err.message || err);
+      } finally {
+        approvalDalamProses.delete(id);
+        buttons.forEach(b => b.disabled = false);
+        setTimeout(() => notice.remove(),15000);
       }
     }
 
