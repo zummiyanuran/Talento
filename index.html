@@ -531,7 +531,7 @@
         do {
           refreshShiftPerluUlang = false;
           if (!(await muatUserRequests()) || !currentUser?.id) break;
-          await Promise.all([muatShiftHariIni(), muatJadwalShift(), muatRiwayatShift()]);
+          await Promise.all([muatShiftHariIni(), muatJadwalShift(), muatRiwayatShift(), muatRiwayatClaim(), muatRiwayatCuti(), muatRiwayatLembur(), muatRiwayat()]);
         } while (refreshShiftPerluUlang);
       } catch (err) {
         console.error('Gagal menyegarkan data shift:', err);
@@ -836,12 +836,20 @@
       } finally { keys.forEach(k => klaimDalamProses.delete(k)); }
     }
 
+    let presensiSedangBerjalan = false;
     function catatPresensi(tipeAbsen) {
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
+      if (presensiSedangBerjalan) return;
+      presensiSedangBerjalan = true;
+      const buttons = ['btnMasuk','btnPulang'].map(id => document.getElementById(id));
+      const previous = buttons.map(b => b.disabled);
+      buttons.forEach(b => b.disabled = true);
+      const selesai = () => { presensiSedangBerjalan = false; buttons.forEach((b,i) => b.disabled = previous[i]); };
       statusDiv.innerText = `Mengambil lokasi Absen ${tipeAbsen}...`;
       navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
@@ -852,7 +860,7 @@
 
         let alamatTeks = `Lokasi GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {signal: AbortSignal.timeout(3000)});
           const geoData = await res.json();
           if(geoData.display_name) alamatTeks = geoData.display_name;
         } catch (e) { console.log("Geocoding Error:", e); }
@@ -902,7 +910,9 @@
           await muatRiwayat();
           await muatJadwalShift();
         }
-      }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak! Pastikan GPS aktif.</span>`, { enableHighAccuracy: true });
+        } catch (err) { statusDiv.textContent = 'Presensi gagal: ' + (err.message || 'Kesalahan jaringan'); }
+        finally { selesai(); try { await muatRiwayat(); } catch(e) { console.error(e); } }
+      }, (err) => { selesai(); statusDiv.textContent = 'GPS gagal: ' + err.message; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
     }
 
     async function muatRiwayat() {
@@ -1076,7 +1086,7 @@
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHariLibur = liburNasional.includes(tglStr);
 
-        const presensiHariIni = userAttendances.filter(a => bersihkanTanggal(a.created_at) === tglStr);
+        const presensiHariIni = userAttendances.filter(a => tanggalWIB(a.created_at) === tglStr);
         let absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
         let absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
 
@@ -2070,6 +2080,22 @@
         : '<small>Tidak ada pengguna yang sesuai dengan filter.</small>';
     }
 
+    async function ambilSemua(tabel, filter = q => q) {
+      const rows = [];
+      for (let offset = 0; ; offset += 500) {
+        const {data,error} = await filter(supabaseClient.from(tabel).select('*')).order('id').range(offset,offset+499);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < 500) return rows;
+      }
+    }
+    function tanggalWIB(value) {
+      if (!value) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(value));
+      const get = type => parts.find(p => p.type === type)?.value;
+      return `${get('year')}-${get('month')}-${get('day')}`;
+    }
     async function muatRekapPresensiSuperAdmin() {
       const container = document.getElementById('adminRekapList');
       container.innerHTML = "<small>Memuat rekap presensi...</small>";
@@ -2097,12 +2123,13 @@
         }
       } catch (e) { console.log("Gagal memuat libur", e); }
 
-      const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+      dataExportSuperAdmin = [];
+      try {
+      const allUsers = await ambilSemua('profiles');
       const usersMap = {};
       if (allUsers) allUsers.forEach(u => usersMap[u.id] = u);
 
-      const { data: attendances } = await supabaseClient.from('attendances').select('*');
-      const { data: requests } = await supabaseClient.from('requests').select('*');
+      const [attendances, requests] = await Promise.all([ambilSemua('attendances'), ambilSemua('requests')]);
 
       const bersihkanTanggal = (str) => {
         if (!str) return '';
@@ -2171,6 +2198,13 @@
             if (taggingLokasi === '-') taggingLokasi = absenPulang.alamat || (absenPulang.latitude + ', ' + absenPulang.longitude);
           }
 
+          for (const claim of reqHariIni.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui' && r.date === tglStr).sort((a,b) => String(b.created_at).localeCompare(String(a.created_at)))) {
+            const match = /^(Masuk|Pulang)\s*\((\d{2}:\d{2})\)/i.exec(claim.shift_choice || '');
+            if (!match) continue;
+            if (match[1].toLowerCase() === 'masuk' && jamMasuk === '-') jamMasuk = match[2];
+            if (match[1].toLowerCase() === 'pulang' && jamPulang === '-') jamPulang = match[2];
+            if (taggingLokasi === '-') taggingLokasi = '[KLAIM DISETUJUI] ' + (claim.description || 'Klaim Presensi');
+          }
           if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
           if (cutiApproved) {
             statusAbsen = `Cuti (${cutiApproved.shift_choice || 'Disetujui'})`;
@@ -2214,9 +2248,11 @@
       } else {
         container.innerHTML = "<small style='color:#64748b;'>Tidak ada data presensi pada periode ini.</small>";
       }
+      } catch (err) { dataExportSuperAdmin = []; container.textContent = 'Gagal memuat rekap: ' + (err.message || err); }
     }
 
-    function exportToExcel() {
+    async function exportToExcel() {
+      await muatRekapPresensiSuperAdmin();
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const dataFormatted = dataExportSuperAdmin.map(item => ({
         "Tanggal": item.tanggal,
@@ -2237,7 +2273,8 @@
       XLSX.writeFile(wb, `Rekap_Presensi_Komnas_Perempuan_${Date.now()}.xlsx`);
     }
 
-    function exportToPDF() {
+    async function exportToPDF() {
+      await muatRekapPresensiSuperAdmin();
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape');
