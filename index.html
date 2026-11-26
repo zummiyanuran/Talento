@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRIS Komnas Perempuan</title>
+  <title>BHINNEKA | Komnas Perempuan</title>
+  <meta name="theme-color" content="#60358b">
+  <meta name="description" content="BHINNEKA — Merawat Keberagaman, Menumbuhkan Potensi. Human Resource Management &amp; Development System Komnas Perempuan.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%2080%2065%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%2240%22%20cy%3D%229%22%20r%3D%227%22%20fill%3D%22%2360358b%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2218%22%20r%3D%226%22%20fill%3D%22%23a74698%22%2F%3E%3Ccircle%20cx%3D%2265%22%20cy%3D%2218%22%20r%3D%226%22%20fill%3D%22%23d48b3b%22%2F%3E%3Cpath%20d%3D%22M40%2061C35%2035%2023%2028%2022%2013C33%2019%2039%2027%2040%2034C41%2027%2047%2019%2058%2013C57%2028%2045%2035%2040%2061Z%22%20fill%3D%22%2360358b%22%2F%3E%3Cpath%20d%3D%22M35%2061C12%2059%202%2043%202%2026C18%2029%2030%2041%2035%2061Z%22%20fill%3D%22%23a74698%22%2F%3E%3Cpath%20d%3D%22M45%2061C68%2059%2078%2043%2078%2026C62%2029%2050%2041%2045%2061Z%22%20fill%3D%22%23d48b3b%22%2F%3E%3Cpath%20d%3D%22M35%2064C20%2064%2011%2059%206%2051C18%2052%2029%2057%2035%2064Z%22%20fill%3D%22%234a809e%22%2F%3E%3Cpath%20d%3D%22M45%2064C60%2064%2069%2059%2074%2051C62%2052%2051%2057%2045%2064Z%22%20fill%3D%22%234b947c%22%2F%3E%3C%2Fsvg%3E">
   <!-- Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <!-- SheetJS untuk Export Excel -->
@@ -18,8 +21,8 @@
     .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 520px; text-align: center; }
     h2, h3, h4 { margin-top: 0; color: #2c3e50; }
     input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
-    button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
-    button:hover { background: #1d4ed8; }
+    button { background: #60358b; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
+    button:hover { background: #442163; }
     button:disabled { background: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; }
     .btn-pulang { background: #ef4444; }
     .btn-pulang:hover { background: #dc2626; }
@@ -33,10 +36,10 @@
     .btn-delete { background: #991b1b; padding: 4px 8px; font-size: 10px; margin-top: 4px; width: auto; }
     .hidden { display: none; }
     #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
-    .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
+    .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #60358b; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
     .nav-tabs { display: flex; gap: 4px; margin-bottom: 15px; flex-wrap: wrap; }
     .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 45px; }
-    .nav-tabs button.active { background: #2563eb; color: white; }
+    .nav-tabs button.active { background: #60358b; color: white; }
     .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
     .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: inline-block; }
     .today-shift-badge { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: block; }
@@ -58,25 +61,61 @@
     .time-container div { flex: 1; }
     .lembur-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 6px; margin: 6px 0; text-align: left; }
     .lembur-box-title { font-size: 11px; font-weight: bold; color: #1e293b; margin-bottom: 4px; }
+  
+    /* BHINNEKA — modern humanistic design */
+    :root { color-scheme: light; --brand:#60358b; --brand-dark:#442163; --ink:#30243e; --muted:#685b75; --line:#e6dced; --surface:#faf7fc; }
+    body { background: radial-gradient(ellipse at 10% 0%,#f4def2 0%,transparent 45%),radial-gradient(ellipse at 100% 100%,#e1e8f6 0%,transparent 48%),#f7f2fa; padding:32px 16px; color:var(--ink); }
+    .card { width:min(100%,640px); padding:28px; border:1px solid var(--line); border-radius:24px; box-shadow:0 18px 60px #44216314; }
+    .brand { position:relative; overflow:hidden; isolation:isolate; padding:24px 14px 20px; margin:-8px -8px 24px; border:1px solid #ebdff3; border-radius:18px; background:radial-gradient(ellipse at 0% 0%,#efd7f4,transparent 60%),linear-gradient(135deg,#fcf7ff,#eee5f8); }
+    .brand::after { content:""; position:absolute; inset:auto 0 0; height:5px; background:linear-gradient(90deg,#a74698 0 20%,#7953a6 20% 40%,#4a809e 40% 60%,#4b947c 60% 80%,#d48b3b 80%); }
+    .brand-mark { display:block; width:64px; height:54px; margin:0 auto 10px; }
+    .brand h1 { margin:0; color:var(--brand-dark); font-size:clamp(24px,6vw,38px); line-height:1.2; letter-spacing:.15em; font-weight:800; }
+    .brand-tagline { font-size:14px; line-height:1.5; font-weight:650; margin:9px 0 12px; color:#52346f; }
+    .brand-description { margin:0; padding-top:10px; border-top:1px solid #dbc9e8; font-size:11px; line-height:1.5; color:var(--muted); }
+    .brand-institution { margin:5px 0 0; font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--brand-dark); }
+    h2,h3,h4 { color:var(--ink); }
+    input,select,textarea { border:1px solid #d7cce0; border-radius:10px; padding:11px; color:var(--ink); background:#fff; }
+    input:focus,select:focus,textarea:focus { outline:2px solid #9568c3; outline-offset:1px; }
+    button { background:var(--brand); border-radius:10px; padding:11px; transition:background .15s ease,box-shadow .15s ease; }
+    button:hover { background:var(--brand-dark); }
+    button:focus-visible { outline:3px solid #a579cf; outline-offset:2px; }
+    .nav-tabs { gap:6px; padding:7px; background:var(--surface); border:1px solid var(--line); border-radius:14px; }
+    .nav-tabs button { background:#ede5f3; color:#52346f; border-radius:8px; font-size:11px; padding:9px 6px; min-width:74px; }
+    .nav-tabs button.active { background:var(--brand-dark); color:#fff; }
+    .profile-img { border:3px solid #b18bd1; box-shadow:0 0 0 4px #f1e7f8; }
+    .list-item,.filter-month-box,.lembur-box { background:var(--surface); border-color:var(--line); border-radius:10px; }
+    .date-badge,.role-badge { background:#ede5f5; color:#52346f; }
+    .btn-secondary:hover { background:#087c60; } .btn-warning:hover { background:#b76b05; }
+    .btn-excel:hover,.btn-approve:hover { background:#166534; } .btn-pdf:hover,.btn-reject:hover,.btn-delete:hover { background:#991b1b; }
+    #authSection:not(.hidden),#forgotPasswordSection:not(.hidden),#resetPasswordSection:not(.hidden) { max-width:390px; margin:0 auto; }
+    @media(max-width:480px) { body { padding:12px 8px; } .card { padding:16px; border-radius:18px; } .brand { margin:0 0 18px; padding:19px 10px 16px; } .brand-tagline { font-size:12px; } .nav-tabs button { min-width:65px; } .filter-month-box { flex-wrap:wrap; } }
+    @media(prefers-reduced-motion:reduce) { button { transition:none; } }
+
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>TALENTO</h2>
+    <header class="brand" aria-label="BHINNEKA Komnas Perempuan">
+      <svg class="brand-mark" viewBox="0 0 80 65" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><circle cx="40" cy="9" r="7" fill="#60358b"/><circle cx="15" cy="18" r="6" fill="#a74698"/><circle cx="65" cy="18" r="6" fill="#d48b3b"/><path d="M40 61C35 35 23 28 22 13C33 19 39 27 40 34C41 27 47 19 58 13C57 28 45 35 40 61Z" fill="#60358b"/><path d="M35 61C12 59 2 43 2 26C18 29 30 41 35 61Z" fill="#a74698"/><path d="M45 61C68 59 78 43 78 26C62 29 50 41 45 61Z" fill="#d48b3b"/><path d="M35 64C20 64 11 59 6 51C18 52 29 57 35 64Z" fill="#4a809e"/><path d="M45 64C60 64 69 59 74 51C62 52 51 57 45 64Z" fill="#4b947c"/></svg>
+      <h1>BHINNEKA</h1>
+      <p class="brand-tagline">Merawat Keberagaman, Menumbuhkan Potensi.</p>
+      <p class="brand-description">Human Resource Management &amp; Development System</p>
+      <p class="brand-institution">KOMNAS PEREMPUAN</p>
+    </header>
 
     <!-- FORM AUTENTIKASI -->
     <div id="authSection">
       <input type="email" id="email" placeholder="Email Pengguna">
       <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
       <button type="button" onclick="login()">Masuk</button>
-      <button type="button" onclick="tampilkanLupaPassword()" style="background:transparent;color:#2563eb;width:auto;padding:8px;margin-top:6px;text-decoration:underline;">Lupa Password?</button>
+      <button type="button" onclick="tampilkanLupaPassword()" style="background:transparent;color:#60358b;width:auto;padding:8px;margin-top:6px;text-decoration:underline;">Lupa Password?</button>
     </div>
 
     <!-- PEMULIHAN PASSWORD -->
     <div id="forgotPasswordSection" class="hidden">
       <h3>Lupa Password</h3>
-      <p style="font-size:13px;color:#475569;">Masukkan email yang terdaftar di Talento. Kami akan mengirimkan tautan untuk membuat password baru.</p>
+      <p style="font-size:13px;color:#475569;">Masukkan email yang terdaftar di BHINNEKA. Kami akan mengirimkan tautan untuk membuat password baru.</p>
       <input type="email" id="resetEmail" placeholder="Email Pengguna" autocomplete="email">
       <button type="button" id="sendResetBtn" onclick="kirimTautanReset()">Kirim Tautan Reset Password</button>
       <button type="button" onclick="kembaliKeLogin()" style="background:#64748b;">Kembali ke Login</button>
@@ -90,7 +129,7 @@
 
     <!-- DASHBOARD UTAMA -->
     <div id="mainDashboard" class="hidden">
-      <img id="userAvatar" class="profile-img" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="Profile">
+      <img id="userAvatar" class="profile-img" src="https://ui-avatars.com/api/?name=User&background=60358b&color=fff" alt="Profile">
       <h4 id="userName" style="margin-bottom:2px;">Pengguna</h4>
       <div id="userRoleBadge" class="role-badge">Jabatan: -</div>
       <div id="userUnitBadge" class="unit-badge">Unit: Umum</div>
@@ -209,7 +248,7 @@
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Lembur:</label>
         <input type="date" id="lemburReqDate" onchange="evaluasiOpsiLembur()">
 
-        <div id="infoStatusHariLembur" style="font-size:11px; font-weight:bold; color:#2563eb; text-align:left; margin-bottom:4px;">Hari Kerja (Senin–Jumat)</div>
+        <div id="infoStatusHariLembur" style="font-size:11px; font-weight:bold; color:#60358b; text-align:left; margin-bottom:4px;">Hari Kerja (Senin–Jumat)</div>
 
         <!-- FORM JAM LEMBUR HARI KERJA -->
         <div id="boxLemburHariKerja">
@@ -355,7 +394,7 @@
         <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
 
         <!-- JADWAL SHIFT SELURUH PENGGUNA -->
-        <h4 style="margin-bottom:8px; color:#2563eb;">📅 Jadwal Shift Seluruh Pengguna</h4>
+        <h4 style="margin-bottom:8px; color:#60358b;">📅 Jadwal Shift Seluruh Pengguna</h4>
         <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
           <label for="adminShiftUser" style="font-size:11px; font-weight:bold;">Filter Pengguna:</label>
           <select id="adminShiftUser" onchange="muatJadwalShiftSuperAdmin()">
@@ -371,7 +410,7 @@
         <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
 
         <!-- MODUL KHUSUS SUPER ADMIN: EDIT/OVERWRITE PRESENSI PEGAWAI -->
-        <h4 style="margin-bottom:8px; color:#2563eb;">🛠️ Edit / Injeksi Presensi Pegawai</h4>
+        <h4 style="margin-bottom:8px; color:#60358b;">🛠️ Edit / Injeksi Presensi Pegawai</h4>
         <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
           <label style="font-size:11px; font-weight:bold;">Pilih Pegawai:</label>
           <select id="adminEditUserSelect">
@@ -649,7 +688,7 @@
         optCKomp.innerText = "Saldo Cuti Kompensasi (CKOMP) (Min 8 Jam di Hari Libur = +1 Hari)";
       } else {
         infoStatus.innerText = "Hari Kerja (Senin–Jumat)";
-        infoStatus.style.color = "#2563eb";
+        infoStatus.style.color = "#60358b";
         boxHariKerja.classList.remove('hidden');
         boxHariLibur.classList.add('hidden');
         
@@ -1274,7 +1313,7 @@
         if (data.avatar_url && data.avatar_url.trim() !== "") {
           document.getElementById('userAvatar').src = data.avatar_url;
         } else {
-          document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nama)}&background=2563eb&color=fff`;
+          document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nama)}&background=60358b&color=fff`;
         }
         document.getElementById('editFullName').value = nama;
         document.getElementById('editEmail').value = currentUser.email;
@@ -1505,7 +1544,7 @@
 
           return `
             <div class="list-item">
-              <div><b>Jenis Cuti:</b> <span style="color:#2563eb; font-weight:bold;">${item.shift_choice || 'Cuti'}</span></div>
+              <div><b>Jenis Cuti:</b> <span style="color:#60358b; font-weight:bold;">${item.shift_choice || 'Cuti'}</span></div>
               <div><b>Keterangan:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
             </div>
@@ -1691,7 +1730,7 @@
           return `
             <div class="list-item">
               <div><b>Pemohon:</b> ${pemohon} <small style="color:#64748b;">(${pemohonRole})</small></div>
-              <div><b>Jenis:</b> <span style="color:#2563eb; font-weight:bold;">${tipeJenis}</span></div>
+              <div><b>Jenis:</b> <span style="color:#60358b; font-weight:bold;">${tipeJenis}</span></div>
               <div><b>Detail:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
               
@@ -2160,7 +2199,7 @@
       if (dataExportSuperAdmin.length > 0) {
         container.innerHTML = dataExportSuperAdmin.map(row => `
           <div class="list-item">
-            <b>${row.nama}</b> <small style="color:#2563eb;">(${row.role} - ${row.unit})</small> - <small>${row.tanggal}</small><br>
+            <b>${row.nama}</b> <small style="color:#60358b;">(${row.role} - ${row.unit})</small> - <small>${row.tanggal}</small><br>
             ⏰ Shift: <b>${row.shift}</b><br>
             📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
             🌙 Lembur: ${row.lembur}<br>
@@ -2477,13 +2516,13 @@ async function superAdminRegisterUser() {
           const phoneRekan = r.phone_number || '-';
           const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "")
             ? r.avatar_url
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=2563eb&color=fff`;
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=60358b&color=fff`;
 
           return `
             <div class="list-item" style="display:flex; align-items:center; gap:10px;">
               <img src="${avatarRekan}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
               <div style="min-width:0;">
-                <b>${namaRekan}</b> <small style="color:#2563eb;">(${roleRekan})</small><br>
+                <b>${namaRekan}</b> <small style="color:#60358b;">(${roleRekan})</small><br>
                 <small style="color:#475569;">✉️ Email: ${emailRekan}</small><br>
                 <small style="color:#475569;">📞 WA/Telp: ${phoneRekan}</small><br>
                 <small style="color:#64748b;">🏢 Unit: ${unitRekan}</small>
