@@ -12,6 +12,6 @@ BHINNEKA terinspirasi dari Salam Indonesia yang Bhinneka. Identitas visual mengg
 
 ## Akses
 
-[BUKA BHINNEKA](https://zummiyanuran.github.io/Talento/)
+[BUKA BHINNEKA](https://zummiyanuran.github.io/bhinneka/)
 
 Alamat GitHub Pages dan identifier teknis lama dipertahankan untuk kompatibilitas autentikasi dan layanan yang telah berjalan.
