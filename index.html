@@ -771,7 +771,7 @@
       tombol.disabled = true;
       status.textContent = 'Mengirim tautan pemulihan...';
       try {
-        const redirectTo = 'https://zummiyanuran.github.io/Talento/';
+        const redirectTo = 'https://zummiyanuran.github.io/bhinneka/';
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
         status.textContent = 'Jika email terdaftar, tautan reset password akan dikirim. Periksa juga folder spam.';
