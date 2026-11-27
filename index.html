@@ -1612,6 +1612,18 @@
       }
     }
 
+    function detailTanggalKlaim(item) {
+      const raw = String(item.date || '');
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(raw + 'T00:00:00+07:00') : null;
+      const tanggal = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('id-ID', {timeZone:'Asia/Jakarta', weekday:'long', day:'numeric', month:'long', year:'numeric'}) : 'Tanggal tidak tersedia';
+      const submitted = item.created_at ? new Date(item.created_at) : null;
+      const waktu = submitted && !Number.isNaN(submitted.getTime()) ? submitted.toLocaleDateString('id-ID', {timeZone:'Asia/Jakarta', day:'numeric', month:'long', year:'numeric'}) + ', ' + submitted.toLocaleTimeString('id-ID', {timeZone:'Asia/Jakarta', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false}) + ' WIB' : '-';
+      const shift = String(item.shift_choice || '-').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      return `<div><b>Tanggal Presensi:</b> <span style="color:#60358b; font-weight:bold;">${tanggal}</span></div>
+              <div><b>Jenis dan Jam Presensi:</b> ${shift}</div>
+              <small style="display:block; color:#64748b;">Diajukan: ${waktu}</small>`;
+    }
+
     async function muatRiwayatClaim() {
       const list = document.getElementById('riwayatClaimList');
       const { data } = await supabaseClient
@@ -1630,6 +1642,7 @@
 
           return `
             <div class="list-item">
+              ${detailTanggalKlaim(item)}
               <div><b>Keterangan:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
             </div>
@@ -1731,6 +1744,7 @@
             <div class="list-item">
               <div><b>Pemohon:</b> ${pemohon} <small style="color:#64748b;">(${pemohonRole})</small></div>
               <div><b>Jenis:</b> <span style="color:#60358b; font-weight:bold;">${tipeJenis}</span></div>
+              ${item.type === 'claim_absen' ? detailTanggalKlaim(item) : ''}
               <div><b>Detail:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
               
